@@ -24,13 +24,22 @@ export async function getCurrentUser(): Promise<User | null> {
       return null
     }
 
-    // Parse session data (in production, verify JWT token)
-    const sessionData = JSON.parse(sessionCookie.value)
+    let sessionData: any
+    
+    // Try to parse as JSON first (our simple session format)
+    try {
+      sessionData = JSON.parse(sessionCookie.value)
+    } catch (parseError) {
+      // If it fails, it might be a JWT token from a previous setup
+      // For now, just clear it and return null
+      console.log("[v0] Invalid session format, please log in again")
+      return null
+    }
 
     // Fetch user from database
     const users = await sql`
       SELECT id, email, name, created_at
-      FROM neon_auth.users_sync
+      FROM users
       WHERE id = ${sessionData.userId}
       AND deleted_at IS NULL
       LIMIT 1
@@ -54,7 +63,7 @@ export async function getUserWithPermissions(userId: string): Promise<UserWithPe
       SELECT 
         u.id, u.email, u.name, u.created_at,
         p.*
-      FROM neon_auth.users_sync u
+      FROM users u
       LEFT JOIN user_permissions p ON u.id = p.user_id
       WHERE u.id = ${userId}
       AND u.deleted_at IS NULL

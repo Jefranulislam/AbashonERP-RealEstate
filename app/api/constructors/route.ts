@@ -12,21 +12,24 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const search = searchParams.get("search")
 
-    let query = `
-      SELECT * FROM constructors
-      WHERE is_active = true
-    `
+    console.log("[v0] Fetching constructors with search:", search)
 
-    const params: any[] = []
+    let constructors
 
     if (search) {
-      query += ` AND (constructor_name ILIKE $${params.length + 1} OR phone ILIKE $${params.length + 1})`
-      params.push(`%${search}%`)
+      constructors = await sql`
+        SELECT * FROM constructors
+        WHERE is_active = true
+          AND (constructor_name ILIKE ${'%' + search + '%'} OR phone ILIKE ${'%' + search + '%'})
+        ORDER BY created_at DESC
+      `
+    } else {
+      constructors = await sql`
+        SELECT * FROM constructors
+        WHERE is_active = true
+        ORDER BY created_at DESC
+      `
     }
-
-    query += ` ORDER BY created_at DESC`
-
-    const constructors = await sql(query, params)
 
     return NextResponse.json({ constructors })
   } catch (error) {
@@ -47,11 +50,10 @@ export async function POST(request: NextRequest) {
 
     const result = await sql`
       INSERT INTO constructors (
-        constructor_name, mailing_address, website, phone, email, description, is_active
+        constructor_name, mailing_address, phone, email, description, is_active
       ) VALUES (
         ${data.constructorName}, 
         ${data.mailingAddress || null}, 
-        ${data.website || null}, 
         ${data.phone || null}, 
         ${data.email || null}, 
         ${data.description || null}, 

@@ -10,7 +10,8 @@ export async function GET() {
     }
 
     const bankCashAccounts = await sql`
-      SELECT * FROM bank_cash_accounts
+      SELECT id, account_title, description, is_active, created_at
+      FROM bank_cash_accounts
       WHERE is_active = true
       ORDER BY account_title ASC
     `
@@ -28,13 +29,25 @@ export async function POST(request: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
-
     const data = await request.json()
 
+    // Basic validation
+    if (!data || typeof data.accountTitle !== "string" || data.accountTitle.trim() === "") {
+      return NextResponse.json({ error: "Invalid accountTitle" }, { status: 400 })
+    }
+
+    const accountNumber = data.accountNumber || null
+    const bankName = data.bankName || null
+    const branch = data.branch || null
+    const description = data.description || null
+    const isActive = data.isActive === undefined ? true : !!data.isActive
+
+    // The DB schema only defines account_title and description for bank_cash_accounts.
+    // Store accountTitle and description; keep is_active where available.
     const result = await sql`
       INSERT INTO bank_cash_accounts (account_title, description, is_active)
-      VALUES (${data.accountTitle}, ${data.description}, ${data.isActive})
-      RETURNING *
+      VALUES (${data.accountTitle}, ${description}, ${isActive})
+      RETURNING id, account_title, description, is_active, created_at
     `
 
     return NextResponse.json({ success: true, account: result[0] })

@@ -13,34 +13,67 @@ export async function GET(request: NextRequest) {
     const projectId = searchParams.get("projectId")
     const voucherType = searchParams.get("voucherType")
 
-    let query = `
-      SELECT 
-        v.*,
-        p.project_name,
-        ieh.head_name as expense_head_name,
-        bc.account_title as bank_cash_name
-      FROM vouchers v
-      LEFT JOIN projects p ON v.project_id = p.id
-      LEFT JOIN income_expense_heads ieh ON v.expense_head_id = ieh.id
-      LEFT JOIN bank_cash_accounts bc ON v.bank_cash_id = bc.id
-      WHERE 1=1
-    `
+    console.log("[v0] Fetching vouchers with projectId:", projectId, "voucherType:", voucherType)
 
-    const params: any[] = []
+    let vouchers
 
-    if (projectId) {
-      query += ` AND v.project_id = $${params.length + 1}`
-      params.push(projectId)
+    if (projectId && voucherType) {
+      vouchers = await sql`
+        SELECT 
+          v.*,
+          p.project_name,
+          ieh.head_name as expense_head_name,
+          bc.account_title as bank_cash_name
+        FROM vouchers v
+        LEFT JOIN projects p ON v.project_id = p.id
+        LEFT JOIN income_expense_heads ieh ON v.expense_head_id = ieh.id
+        LEFT JOIN bank_cash_accounts bc ON v.bank_cash_id = bc.id
+        WHERE v.project_id = ${projectId}
+          AND v.voucher_type = ${voucherType}
+        ORDER BY v.date DESC, v.created_at DESC
+      `
+    } else if (projectId) {
+      vouchers = await sql`
+        SELECT 
+          v.*,
+          p.project_name,
+          ieh.head_name as expense_head_name,
+          bc.account_title as bank_cash_name
+        FROM vouchers v
+        LEFT JOIN projects p ON v.project_id = p.id
+        LEFT JOIN income_expense_heads ieh ON v.expense_head_id = ieh.id
+        LEFT JOIN bank_cash_accounts bc ON v.bank_cash_id = bc.id
+        WHERE v.project_id = ${projectId}
+        ORDER BY v.date DESC, v.created_at DESC
+      `
+    } else if (voucherType) {
+      vouchers = await sql`
+        SELECT 
+          v.*,
+          p.project_name,
+          ieh.head_name as expense_head_name,
+          bc.account_title as bank_cash_name
+        FROM vouchers v
+        LEFT JOIN projects p ON v.project_id = p.id
+        LEFT JOIN income_expense_heads ieh ON v.expense_head_id = ieh.id
+        LEFT JOIN bank_cash_accounts bc ON v.bank_cash_id = bc.id
+        WHERE v.voucher_type = ${voucherType}
+        ORDER BY v.date DESC, v.created_at DESC
+      `
+    } else {
+      vouchers = await sql`
+        SELECT 
+          v.*,
+          p.project_name,
+          ieh.head_name as expense_head_name,
+          bc.account_title as bank_cash_name
+        FROM vouchers v
+        LEFT JOIN projects p ON v.project_id = p.id
+        LEFT JOIN income_expense_heads ieh ON v.expense_head_id = ieh.id
+        LEFT JOIN bank_cash_accounts bc ON v.bank_cash_id = bc.id
+        ORDER BY v.date DESC, v.created_at DESC
+      `
     }
-
-    if (voucherType) {
-      query += ` AND v.voucher_type = $${params.length + 1}`
-      params.push(voucherType)
-    }
-
-    query += ` ORDER BY v.date DESC, v.created_at DESC`
-
-    const vouchers = await sql(query, params)
 
     return NextResponse.json({ vouchers })
   } catch (error) {

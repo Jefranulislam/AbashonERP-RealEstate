@@ -12,22 +12,25 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const search = searchParams.get("search")
 
-    let query = `
-      SELECT * FROM customers
-      WHERE is_active = true
-    `
+    console.log("[v0] Fetching customers with search:", search)
 
-    const params: any[] = []
+    let customers
 
     if (search) {
-      query += ` AND (customer_name ILIKE $${params.length + 1} OR phone ILIKE $${params.length + 1} OR customer_id ILIKE $${params.length + 1})`
-      params.push(`%${search}%`)
+      customers = await sql`
+        SELECT * FROM customers
+        WHERE is_active = true
+          AND (customer_name ILIKE ${'%' + search + '%'} OR phone ILIKE ${'%' + search + '%'} OR customer_id ILIKE ${'%' + search + '%'})
+        ORDER BY created_at DESC
+      `
+    } else {
+      customers = await sql`
+        SELECT * FROM customers
+        WHERE is_active = true
+        ORDER BY created_at DESC
+      `
     }
 
-    query += ` ORDER BY created_at DESC`
-
-    console.log("[v0] Fetching customers with query:", query)
-    const customers = await sql(query, params)
     console.log("[v0] Customers fetched:", customers.length)
 
     return NextResponse.json({ customers })

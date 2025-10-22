@@ -12,25 +12,32 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const projectId = searchParams.get("projectId")
 
-    let query = `
-      SELECT 
-        p.*,
-        pr.project_name
-      FROM products p
-      LEFT JOIN projects pr ON p.project_id = pr.id
-      WHERE p.is_active = true
-    `
+    console.log("[v0] Fetching products with projectId:", projectId)
 
-    const params: any[] = []
+    let products
 
     if (projectId) {
-      query += ` AND p.project_id = $${params.length + 1}`
-      params.push(projectId)
+      products = await sql`
+        SELECT 
+          p.*,
+          pr.project_name
+        FROM products p
+        LEFT JOIN projects pr ON p.project_id = pr.id
+        WHERE p.is_active = true
+          AND p.project_id = ${projectId}
+        ORDER BY p.created_at DESC
+      `
+    } else {
+      products = await sql`
+        SELECT 
+          p.*,
+          pr.project_name
+        FROM products p
+        LEFT JOIN projects pr ON p.project_id = pr.id
+        WHERE p.is_active = true
+        ORDER BY p.created_at DESC
+      `
     }
-
-    query += ` ORDER BY p.created_at DESC`
-
-    const products = await sql(query, params)
 
     return NextResponse.json({ products })
   } catch (error) {
@@ -51,15 +58,12 @@ export async function POST(request: NextRequest) {
 
     const result = await sql`
       INSERT INTO products (
-        project_id, product_name, product_type, size, price, description, is_active
+        project_id, product_name, description, is_active
       ) VALUES (
-        ${data.projectId}, 
+        ${data.projectId ? Number.parseInt(data.projectId) : null}, 
         ${data.productName}, 
-        ${data.productType || null}, 
-        ${data.size || null},
-        ${data.price}, 
         ${data.description || null}, 
-        ${data.isActive}
+        ${data.isActive !== false}
       )
       RETURNING *
     `

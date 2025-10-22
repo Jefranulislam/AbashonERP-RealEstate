@@ -9,26 +9,40 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const searchParams = request.nextUrl.searchParams
-    const search = searchParams.get("search")
+  const searchParams = request.nextUrl.searchParams
+  const search = searchParams.get("search")
+  const limitParam = Number(searchParams.get("limit") || 20)
+  const offsetParam = Number(searchParams.get("offset") || 0)
+  // enforce sensible bounds
+  const limit = Math.min(Math.max(1, limitParam), 100)
+  const offset = Math.max(0, offsetParam)
 
-    let query = `
-      SELECT * FROM vendors
-      WHERE is_active = true
-    `
+    console.log("[v0] Fetching vendors with search:", search)
 
-    const params: any[] = []
+    let vendors
 
     if (search) {
-      query += ` AND (vendor_name ILIKE $${params.length + 1} OR phone ILIKE $${params.length + 1})`
-      params.push(`%${search}%`)
+      vendors = await sql`
+        SELECT * FROM vendors
+        WHERE is_active = true
+          AND (vendor_name ILIKE ${'%' + search + '%'} OR phone ILIKE ${'%' + search + '%'})
+        ORDER BY created_at DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `
+    } else {
+      vendors = await sql`
+        SELECT * FROM vendors
+        WHERE is_active = true
+        ORDER BY created_at DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `
     }
 
-    query += ` ORDER BY created_at DESC`
-
-    const vendors = await sql(query, params)
-
-    return NextResponse.json({ vendors })
+    return NextResponse.json({ vendors }, {
+      headers: {
+        "Cache-Control": "s-maxage=30, stale-while-revalidate=15",
+      },
+    })
   } catch (error) {
     console.error("[v0] Error fetching vendors:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

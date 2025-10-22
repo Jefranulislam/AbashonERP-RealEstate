@@ -13,38 +13,130 @@ export async function GET(request: NextRequest) {
     const filter = searchParams.get("filter")
     const search = searchParams.get("search")
 
-    let query = `
-      SELECT 
-        l.*,
-        e1.name as assign_to_name,
-        e2.name as assigned_by_name
-      FROM crm_leads l
-      LEFT JOIN employees e1 ON l.assign_to = e1.id
-      LEFT JOIN employees e2 ON l.assigned_by = e2.id
-      WHERE l.is_active = true
-    `
+    console.log("[v0] Fetching leads with filter:", filter, "search:", search)
 
-    const params: any[] = []
+    let leads
 
-    // Apply filters
+    // Base query with joins
     if (filter === "today_call") {
-      query += ` AND l.next_call_date = CURRENT_DATE`
+      if (search) {
+        leads = await sql`
+          SELECT 
+            l.*,
+            e1.name as assign_to_name,
+            e2.name as assigned_by_name
+          FROM crm_leads l
+          LEFT JOIN employees e1 ON l.assign_to = e1.id
+          LEFT JOIN employees e2 ON l.assigned_by = e2.id
+          WHERE l.is_active = true
+            AND l.next_call_date = CURRENT_DATE
+            AND (l.customer_name ILIKE ${'%' + search + '%'} OR l.phone ILIKE ${'%' + search + '%'} OR l.crm_id ILIKE ${'%' + search + '%'})
+          ORDER BY l.created_at DESC
+        `
+      } else {
+        leads = await sql`
+          SELECT 
+            l.*,
+            e1.name as assign_to_name,
+            e2.name as assigned_by_name
+          FROM crm_leads l
+          LEFT JOIN employees e1 ON l.assign_to = e1.id
+          LEFT JOIN employees e2 ON l.assigned_by = e2.id
+          WHERE l.is_active = true
+            AND l.next_call_date = CURRENT_DATE
+          ORDER BY l.created_at DESC
+        `
+      }
     } else if (filter === "pending_call") {
-      query += ` AND l.next_call_date < CURRENT_DATE`
+      if (search) {
+        leads = await sql`
+          SELECT 
+            l.*,
+            e1.name as assign_to_name,
+            e2.name as assigned_by_name
+          FROM crm_leads l
+          LEFT JOIN employees e1 ON l.assign_to = e1.id
+          LEFT JOIN employees e2 ON l.assigned_by = e2.id
+          WHERE l.is_active = true
+            AND l.next_call_date < CURRENT_DATE
+            AND (l.customer_name ILIKE ${'%' + search + '%'} OR l.phone ILIKE ${'%' + search + '%'} OR l.crm_id ILIKE ${'%' + search + '%'})
+          ORDER BY l.created_at DESC
+        `
+      } else {
+        leads = await sql`
+          SELECT 
+            l.*,
+            e1.name as assign_to_name,
+            e2.name as assigned_by_name
+          FROM crm_leads l
+          LEFT JOIN employees e1 ON l.assign_to = e1.id
+          LEFT JOIN employees e2 ON l.assigned_by = e2.id
+          WHERE l.is_active = true
+            AND l.next_call_date < CURRENT_DATE
+          ORDER BY l.created_at DESC
+        `
+      }
     } else if (filter === "today_followup") {
-      query += ` AND l.next_call_date = CURRENT_DATE AND l.leads_status = 'Followup'`
+      if (search) {
+        leads = await sql`
+          SELECT 
+            l.*,
+            e1.name as assign_to_name,
+            e2.name as assigned_by_name
+          FROM crm_leads l
+          LEFT JOIN employees e1 ON l.assign_to = e1.id
+          LEFT JOIN employees e2 ON l.assigned_by = e2.id
+          WHERE l.is_active = true
+            AND l.next_call_date = CURRENT_DATE 
+            AND l.leads_status = 'Followup'
+            AND (l.customer_name ILIKE ${'%' + search + '%'} OR l.phone ILIKE ${'%' + search + '%'} OR l.crm_id ILIKE ${'%' + search + '%'})
+          ORDER BY l.created_at DESC
+        `
+      } else {
+        leads = await sql`
+          SELECT 
+            l.*,
+            e1.name as assign_to_name,
+            e2.name as assigned_by_name
+          FROM crm_leads l
+          LEFT JOIN employees e1 ON l.assign_to = e1.id
+          LEFT JOIN employees e2 ON l.assigned_by = e2.id
+          WHERE l.is_active = true
+            AND l.next_call_date = CURRENT_DATE 
+            AND l.leads_status = 'Followup'
+          ORDER BY l.created_at DESC
+        `
+      }
+    } else {
+      // No filter
+      if (search) {
+        leads = await sql`
+          SELECT 
+            l.*,
+            e1.name as assign_to_name,
+            e2.name as assigned_by_name
+          FROM crm_leads l
+          LEFT JOIN employees e1 ON l.assign_to = e1.id
+          LEFT JOIN employees e2 ON l.assigned_by = e2.id
+          WHERE l.is_active = true
+            AND (l.customer_name ILIKE ${'%' + search + '%'} OR l.phone ILIKE ${'%' + search + '%'} OR l.crm_id ILIKE ${'%' + search + '%'})
+          ORDER BY l.created_at DESC
+        `
+      } else {
+        leads = await sql`
+          SELECT 
+            l.*,
+            e1.name as assign_to_name,
+            e2.name as assigned_by_name
+          FROM crm_leads l
+          LEFT JOIN employees e1 ON l.assign_to = e1.id
+          LEFT JOIN employees e2 ON l.assigned_by = e2.id
+          WHERE l.is_active = true
+          ORDER BY l.created_at DESC
+        `
+      }
     }
 
-    // Apply search
-    if (search) {
-      query += ` AND (l.customer_name ILIKE $${params.length + 1} OR l.phone ILIKE $${params.length + 1} OR l.crm_id ILIKE $${params.length + 1})`
-      params.push(`%${search}%`)
-    }
-
-    query += ` ORDER BY l.created_at DESC`
-
-    console.log("[v0] Executing query:", query, "with params:", params)
-    const leads = await sql(query, params)
     console.log("[v0] Leads fetched:", leads.length)
 
     return NextResponse.json({ leads })

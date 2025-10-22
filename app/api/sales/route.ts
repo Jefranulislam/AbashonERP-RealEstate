@@ -13,37 +13,80 @@ export async function GET(request: NextRequest) {
     const customerId = searchParams.get("customerId")
     const search = searchParams.get("search")
 
-    let query = `
-      SELECT 
-        s.*,
-        c.customer_name,
-        e.name as seller_name,
-        p.project_name,
-        pr.product_name
-      FROM sales s
-      LEFT JOIN customers c ON s.customer_id = c.id
-      LEFT JOIN employees e ON s.seller_id = e.id
-      LEFT JOIN projects p ON s.project_id = p.id
-      LEFT JOIN products pr ON s.product_id = pr.id
-      WHERE s.is_active = true
-    `
+    console.log("[v0] Fetching sales with customerId:", customerId, "search:", search)
 
-    const params: any[] = []
+    let sales
 
-    if (customerId) {
-      query += ` AND s.customer_id = $${params.length + 1}`
-      params.push(customerId)
+    if (customerId && search) {
+      sales = await sql`
+        SELECT 
+          s.*,
+          c.customer_name,
+          e.name as seller_name,
+          p.project_name,
+          pr.product_name
+        FROM sales s
+        LEFT JOIN customers c ON s.customer_id = c.id
+        LEFT JOIN employees e ON s.seller_id = e.id
+        LEFT JOIN projects p ON s.project_id = p.id
+        LEFT JOIN products pr ON s.product_id = pr.id
+        WHERE s.is_active = true
+          AND s.customer_id = ${customerId}
+          AND (c.customer_name ILIKE ${'%' + search + '%'} OR p.project_name ILIKE ${'%' + search + '%'})
+        ORDER BY s.sale_date DESC
+      `
+    } else if (customerId) {
+      sales = await sql`
+        SELECT 
+          s.*,
+          c.customer_name,
+          e.name as seller_name,
+          p.project_name,
+          pr.product_name
+        FROM sales s
+        LEFT JOIN customers c ON s.customer_id = c.id
+        LEFT JOIN employees e ON s.seller_id = e.id
+        LEFT JOIN projects p ON s.project_id = p.id
+        LEFT JOIN products pr ON s.product_id = pr.id
+        WHERE s.is_active = true
+          AND s.customer_id = ${customerId}
+        ORDER BY s.sale_date DESC
+      `
+    } else if (search) {
+      sales = await sql`
+        SELECT 
+          s.*,
+          c.customer_name,
+          e.name as seller_name,
+          p.project_name,
+          pr.product_name
+        FROM sales s
+        LEFT JOIN customers c ON s.customer_id = c.id
+        LEFT JOIN employees e ON s.seller_id = e.id
+        LEFT JOIN projects p ON s.project_id = p.id
+        LEFT JOIN products pr ON s.product_id = pr.id
+        WHERE s.is_active = true
+          AND (c.customer_name ILIKE ${'%' + search + '%'} OR p.project_name ILIKE ${'%' + search + '%'})
+        ORDER BY s.sale_date DESC
+      `
+    } else {
+      sales = await sql`
+        SELECT 
+          s.*,
+          c.customer_name,
+          e.name as seller_name,
+          p.project_name,
+          pr.product_name
+        FROM sales s
+        LEFT JOIN customers c ON s.customer_id = c.id
+        LEFT JOIN employees e ON s.seller_id = e.id
+        LEFT JOIN projects p ON s.project_id = p.id
+        LEFT JOIN products pr ON s.product_id = pr.id
+        WHERE s.is_active = true
+        ORDER BY s.sale_date DESC
+      `
     }
 
-    if (search) {
-      query += ` AND (c.customer_name ILIKE $${params.length + 1} OR p.project_name ILIKE $${params.length + 1})`
-      params.push(`%${search}%`)
-    }
-
-    query += ` ORDER BY s.sale_date DESC`
-
-    console.log("[v0] Fetching sales with query:", query)
-    const sales = await sql(query, params)
     console.log("[v0] Sales fetched:", sales.length)
 
     return NextResponse.json({ sales })

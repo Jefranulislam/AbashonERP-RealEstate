@@ -16,9 +16,6 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       UPDATE products SET
         project_id = ${data.projectId},
         product_name = ${data.productName},
-        product_type = ${data.productType || null},
-        size = ${data.size || null},
-        price = ${data.price},
         description = ${data.description || null},
         is_active = ${data.isActive}
       WHERE id = ${id}

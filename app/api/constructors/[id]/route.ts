@@ -16,7 +16,6 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       UPDATE constructors SET
         constructor_name = ${data.constructorName},
         mailing_address = ${data.mailingAddress || null},
-        website = ${data.website || null},
         phone = ${data.phone || null},
         email = ${data.email || null},
         description = ${data.description || null},

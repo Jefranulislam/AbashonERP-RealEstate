@@ -42,42 +42,42 @@ export default async function DashboardPage() {
       value: stats.leads,
       description: "Total active CRM leads",
       icon: Users,
-      href: "/dashboard/crm/leads",
+      href: "/crm/leads",
     },
     {
       title: "Customers",
       value: stats.customers,
       description: "Total registered customers",
       icon: Users,
-      href: "/dashboard/customers",
+      href: "/customers",
     },
     {
       title: "Projects",
       value: stats.projects,
       description: "Active projects",
       icon: Building2,
-      href: "/dashboard/projects",
+      href: "/projects",
     },
     {
       title: "Sales",
       value: stats.sales,
       description: "Total sales transactions",
       icon: TrendingUp,
-      href: "/dashboard/sales",
+      href: "/sales",
     },
     {
       title: "Pending Requisitions",
       value: stats.pendingRequisitions,
       description: "Awaiting confirmation",
       icon: ShoppingCart,
-      href: "/dashboard/purchase/requisitions",
+      href: "/purchase/requisitions",
     },
     {
       title: "Vendors",
       value: stats.vendors,
       description: "Active vendors",
       icon: FileText,
-      href: "/dashboard/vendors",
+      href: "/vendors",
     },
   ]
 
@@ -155,28 +155,28 @@ export default async function DashboardPage() {
           <CardContent>
             <div className="grid gap-2">
               <a
-                href="/dashboard/crm/leads"
+                href="/crm/leads"
                 className="flex items-center gap-2 rounded-lg border p-3 transition-colors hover:bg-accent"
               >
                 <Users className="h-4 w-4" />
                 <span className="text-sm font-medium">Add New Lead</span>
               </a>
               <a
-                href="/dashboard/sales"
+                href="/sales"
                 className="flex items-center gap-2 rounded-lg border p-3 transition-colors hover:bg-accent"
               >
                 <TrendingUp className="h-4 w-4" />
                 <span className="text-sm font-medium">Record Sale</span>
               </a>
               <a
-                href="/dashboard/purchase/requisitions"
+                href="/purchase/requisitions"
                 className="flex items-center gap-2 rounded-lg border p-3 transition-colors hover:bg-accent"
               >
                 <ShoppingCart className="h-4 w-4" />
                 <span className="text-sm font-medium">Create Requisition</span>
               </a>
               <a
-                href="/dashboard/accounting/transactions"
+                href="/accounting/transactions"
                 className="flex items-center gap-2 rounded-lg border p-3 transition-colors hover:bg-accent"
               >
                 <DollarSign className="h-4 w-4" />

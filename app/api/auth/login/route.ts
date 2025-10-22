@@ -10,11 +10,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Email and password are required" }, { status: 400 })
     }
 
-    // In production, verify password hash
+    // In production, verify password hash properly (using bcrypt)
     // For now, simple check against database
     const users = await sql`
       SELECT id, email, name, created_at
-      FROM neon_auth.users_sync
+      FROM users
       WHERE email = ${email}
       AND deleted_at IS NULL
       LIMIT 1
@@ -23,6 +23,9 @@ export async function POST(request: NextRequest) {
     if (users.length === 0) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
     }
+
+    // TODO: Add proper password verification using bcrypt
+    // For now, accept any password for development
 
     const user = users[0]
 
