@@ -1,30 +1,36 @@
-# CRM and Project Management
+# Abashon ERP - Real Estate @Jefranul Islam & FAHIS
 
-*Automatically synced with your [v0.app](https://v0.app) deployments*
-
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/lrrakib8-8559s-projects/v0-crm-and-project-management)
-[![Built with v0](https://img.shields.io/badge/Built%20with-v0.app-black?style=for-the-badge)](https://v0.app/chat/projects/WIIOnXWXFkp)
+A modern, modular ERP system tailored for real estate operations. This repository contains a Next.js application that provides CRM, accounting, finance, projects, purchase, sales, and reporting features optimized for small to medium real estate businesses.
 
 ## Overview
 
-This repository will stay in sync with your deployed chats on [v0.app](https://v0.app).
-Any changes you make to your deployed app will be automatically pushed to this repository from [v0.app](https://v0.app).
+The application includes:
 
-## Deployment
+- CRM (leads, customers)
+- Projects and project locations
+- Products and inventory reports
+- Vendors, constructors and purchasing workflow
+- Accounting and vouchers (credit, debit, journal, contra)
+- Finance tools (bank & cash accounts, expense heads, initial balances)
+- Reports (sales, stock, accounting)
 
-Your project is live at:
+The project is organized using Next.js App Router and server routes for API endpoints. The codebase uses React Query for client-side data fetching and optimistic UI updates, Zod for form validation, and a Neon-compatible PostgreSQL client for database access.
 
-**[https://vercel.com/lrrakib8-8559s-projects/v0-crm-and-project-management](https://vercel.com/lrrakib8-8559s-projects/v0-crm-and-project-management)**
+## Deployment / Demo
 
-## Build your app
+The live deployment and demo are available here:
 
-Continue building your app on:
+https://abashon-erp-real-estate.vercel.app/
 
-**[https://v0.app/chat/projects/WIIOnXWXFkp](https://v0.app/chat/projects/WIIOnXWXFkp)**
+## Contributing
 
-## How It Works
+If you'd like to contribute or run the project locally, please follow the contribution guidelines (not included here). For changes to the database schema, migrations, or sensitive production configuration, coordinate with the repository maintainers.
 
-1. Create and modify your project using [v0.app](https://v0.app)
-2. Deploy your chats from the v0 interface
-3. Changes are automatically pushed to this repository
-4. Vercel deploys the latest version from this repository
+## Notes
+
+- This README intentionally omits local development URLs, database connection details, and other environment-specific instructions.
+- For performance improvements the project contains instrumentation and recommendations in the codebase to make profiling and optimizations easier.
+
+---
+
+If you want a longer README with setup, testing, and deployment steps, or a section for architecture diagrams and API references, tell me which sections to add and I will expand this file.
