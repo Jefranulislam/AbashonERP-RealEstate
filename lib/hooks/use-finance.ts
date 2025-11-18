@@ -49,6 +49,60 @@ export function useCreateFinanceType() {
   })
 }
 
+export function useUpdateFinanceType() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: { name: string; description?: string; isActive?: boolean } }) => {
+      const res = await fetch(`/api/finance/types/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      })
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || "Failed to update finance type")
+      }
+      return res.json()
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["finance-types"] })
+      await queryClient.refetchQueries({ queryKey: ["finance-types"], type: 'active' })
+      toast({ title: "Success", description: "Finance type updated successfully" })
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" })
+    },
+  })
+}
+
+export function useDeleteFinanceType() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/finance/types/${id}`, {
+        method: "DELETE",
+      })
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || "Failed to delete finance type")
+      }
+      return res.json()
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["finance-types"] })
+      await queryClient.refetchQueries({ queryKey: ["finance-types"], type: 'active' })
+      toast({ title: "Success", description: "Finance type deleted successfully" })
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" })
+    },
+  })
+}
+
 // ============ Expense Heads ============
 
 export function useExpenseHeads() {
@@ -95,6 +149,68 @@ export function useCreateExpenseHead() {
       await queryClient.invalidateQueries({ queryKey: ["expense-heads"] })
       await queryClient.refetchQueries({ queryKey: ["expense-heads"], type: 'active' })
       toast({ title: "Success", description: "Expense head created successfully" })
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" })
+    },
+  })
+}
+
+export function useUpdateExpenseHead() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async ({ id, data }: {
+      id: number
+      data: {
+        headName: string
+        incExpTypeId?: number
+        description?: string
+        isActive?: boolean
+      }
+    }) => {
+      const res = await fetch(`/api/finance/expense-heads/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      })
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || "Failed to update expense head")
+      }
+      return res.json()
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["expense-heads"] })
+      await queryClient.refetchQueries({ queryKey: ["expense-heads"], type: 'active' })
+      toast({ title: "Success", description: "Expense head updated successfully" })
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" })
+    },
+  })
+}
+
+export function useDeleteExpenseHead() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/finance/expense-heads/${id}`, {
+        method: "DELETE",
+      })
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || "Failed to delete expense head")
+      }
+      return res.json()
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["expense-heads"] })
+      await queryClient.refetchQueries({ queryKey: ["expense-heads"], type: 'active' })
+      toast({ title: "Success", description: "Expense head deleted successfully" })
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" })
@@ -157,6 +273,70 @@ export function useCreateBankCashAccount() {
   })
 }
 
+export function useUpdateBankCashAccount() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async ({ id, data }: {
+      id: number
+      data: {
+        accountTitle: string
+        accountNumber?: string
+        bankName?: string
+        branch?: string
+        description?: string
+        isActive?: boolean
+      }
+    }) => {
+      const res = await fetch(`/api/finance/bank-cash/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      })
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || "Failed to update bank/cash account")
+      }
+      return res.json()
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["bank-cash-accounts"] })
+      await queryClient.refetchQueries({ queryKey: ["bank-cash-accounts"], type: 'active' })
+      toast({ title: "Success", description: "Account updated successfully" })
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" })
+    },
+  })
+}
+
+export function useDeleteBankCashAccount() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/finance/bank-cash/${id}`, {
+        method: "DELETE",
+      })
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || "Failed to delete bank/cash account")
+      }
+      return res.json()
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["bank-cash-accounts"] })
+      await queryClient.refetchQueries({ queryKey: ["bank-cash-accounts"], type: 'active' })
+      toast({ title: "Success", description: "Account deleted successfully" })
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" })
+    },
+  })
+}
+
 // ============ Initial Bank Cash Balances ============
 
 export function useInitialBankCash() {
@@ -199,6 +379,66 @@ export function useCreateInitialBankCash() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["initial-bank-cash"] })
       toast({ title: "Success", description: "Initial balance set successfully" })
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" })
+    },
+  })
+}
+
+export function useUpdateInitialBankCash() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async ({ id, data }: {
+      id: number
+      data: {
+        bankCashId: number
+        initialBalance: number
+        date: string
+        isConfirmed?: boolean
+      }
+    }) => {
+      const res = await fetch(`/api/initial-bank-cash/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      })
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || "Failed to update initial balance")
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["initial-bank-cash"] })
+      toast({ title: "Success", description: "Initial balance updated successfully" })
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" })
+    },
+  })
+}
+
+export function useDeleteInitialBankCash() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/initial-bank-cash/${id}`, {
+        method: "DELETE",
+      })
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || "Failed to delete initial balance")
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["initial-bank-cash"] })
+      toast({ title: "Success", description: "Initial balance deleted successfully" })
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" })
@@ -249,6 +489,67 @@ export function useCreateInitialExpenseHead() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["initial-expense-heads"] })
       toast({ title: "Success", description: "Initial balance set successfully" })
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" })
+    },
+  })
+}
+
+export function useUpdateInitialExpenseHead() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async ({ id, data }: {
+      id: number
+      data: {
+        projectId: number
+        expenseHeadId: number
+        initialBalance: number
+        date: string
+        isConfirmed?: boolean
+      }
+    }) => {
+      const res = await fetch(`/api/initial-expense-heads/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      })
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || "Failed to update initial balance")
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["initial-expense-heads"] })
+      toast({ title: "Success", description: "Initial balance updated successfully" })
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" })
+    },
+  })
+}
+
+export function useDeleteInitialExpenseHead() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/initial-expense-heads/${id}`, {
+        method: "DELETE",
+      })
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || "Failed to delete initial balance")
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["initial-expense-heads"] })
+      toast({ title: "Success", description: "Initial balance deleted successfully" })
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" })

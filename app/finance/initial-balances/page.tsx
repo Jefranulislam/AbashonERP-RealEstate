@@ -34,7 +34,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Plus, Loader2 } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Plus, Loader2, MoreHorizontal, Pencil, Trash2 } from "lucide-react"
 import {
   useBankCashAccounts,
   useExpenseHeads,
@@ -43,6 +49,10 @@ import {
   useInitialExpenseHeads,
   useCreateInitialBankCash,
   useCreateInitialExpenseHead,
+  useUpdateInitialBankCash,
+  useUpdateInitialExpenseHead,
+  useDeleteInitialBankCash,
+  useDeleteInitialExpenseHead,
 } from "@/lib/hooks/use-finance"
 import { useUIStore } from "@/lib/stores/ui-store"
 import {
@@ -51,6 +61,7 @@ import {
   type InitialBankCashFormData,
   type InitialExpenseHeadFormData,
 } from "@/lib/validations/finance"
+import { useState } from "react"
 
 const BANK_CASH_DIALOG_ID = "initial-bank-cash-dialog"
 const EXPENSE_HEAD_DIALOG_ID = "initial-expense-head-dialog"
@@ -64,10 +75,17 @@ export default function InitialBalancesPage() {
   
   const createBankCash = useCreateInitialBankCash()
   const createExpenseHead = useCreateInitialExpenseHead()
+  const updateBankCash = useUpdateInitialBankCash()
+  const updateExpenseHead = useUpdateInitialExpenseHead()
+  const deleteBankCash = useDeleteInitialBankCash()
+  const deleteExpenseHead = useDeleteInitialExpenseHead()
   
   const { dialogs, openDialog, closeDialog } = useUIStore()
   const isBankCashOpen = dialogs[BANK_CASH_DIALOG_ID] || false
   const isExpenseHeadOpen = dialogs[EXPENSE_HEAD_DIALOG_ID] || false
+  
+  const [editingBankCash, setEditingBankCash] = useState<any>(null)
+  const [editingExpenseHead, setEditingExpenseHead] = useState<any>(null)
 
   const bankCashForm = useForm<InitialBankCashFormData>({
     resolver: zodResolver(initialBankCashSchema),
@@ -91,15 +109,80 @@ export default function InitialBalancesPage() {
   })
 
   async function onBankCashSubmit(data: InitialBankCashFormData) {
-    await createBankCash.mutateAsync(data)
+    if (editingBankCash) {
+      await updateBankCash.mutateAsync({ id: editingBankCash.id, data })
+      setEditingBankCash(null)
+    } else {
+      await createBankCash.mutateAsync(data)
+    }
     bankCashForm.reset()
     closeDialog(BANK_CASH_DIALOG_ID)
   }
 
   async function onExpenseHeadSubmit(data: InitialExpenseHeadFormData) {
-    await createExpenseHead.mutateAsync(data)
+    if (editingExpenseHead) {
+      await updateExpenseHead.mutateAsync({ id: editingExpenseHead.id, data })
+      setEditingExpenseHead(null)
+    } else {
+      await createExpenseHead.mutateAsync(data)
+    }
     expenseHeadForm.reset()
     closeDialog(EXPENSE_HEAD_DIALOG_ID)
+  }
+
+  function handleEditBankCash(item: any) {
+    setEditingBankCash(item)
+    bankCashForm.reset({
+      bankCashId: item.bank_cash_id,
+      initialBalance: parseFloat(item.initial_balance),
+      date: item.date.split("T")[0],
+      isConfirmed: item.is_confirmed ?? false,
+    })
+    openDialog(BANK_CASH_DIALOG_ID)
+  }
+
+  function handleEditExpenseHead(item: any) {
+    setEditingExpenseHead(item)
+    expenseHeadForm.reset({
+      projectId: item.project_id,
+      expenseHeadId: item.expense_head_id,
+      initialBalance: parseFloat(item.initial_balance),
+      date: item.date.split("T")[0],
+      isConfirmed: item.is_confirmed ?? false,
+    })
+    openDialog(EXPENSE_HEAD_DIALOG_ID)
+  }
+
+  async function handleDeleteBankCash(id: number) {
+    if (confirm("Are you sure you want to delete this initial balance?")) {
+      await deleteBankCash.mutateAsync(id)
+    }
+  }
+
+  async function handleDeleteExpenseHead(id: number) {
+    if (confirm("Are you sure you want to delete this initial balance?")) {
+      await deleteExpenseHead.mutateAsync(id)
+    }
+  }
+
+  function handleBankCashDialogChange(open: boolean) {
+    if (open) {
+      openDialog(BANK_CASH_DIALOG_ID)
+    } else {
+      closeDialog(BANK_CASH_DIALOG_ID)
+      setEditingBankCash(null)
+      bankCashForm.reset()
+    }
+  }
+
+  function handleExpenseHeadDialogChange(open: boolean) {
+    if (open) {
+      openDialog(EXPENSE_HEAD_DIALOG_ID)
+    } else {
+      closeDialog(EXPENSE_HEAD_DIALOG_ID)
+      setEditingExpenseHead(null)
+      expenseHeadForm.reset()
+    }
   }
 
   return (
@@ -117,7 +200,7 @@ export default function InitialBalancesPage() {
                 <CardTitle>Bank & Cash Opening Balances</CardTitle>
                 <CardDescription>Set initial balances for bank and cash accounts</CardDescription>
               </div>
-              <Dialog open={isBankCashOpen} onOpenChange={(open) => open ? openDialog(BANK_CASH_DIALOG_ID) : closeDialog(BANK_CASH_DIALOG_ID)}>
+              <Dialog open={isBankCashOpen} onOpenChange={handleBankCashDialogChange}>
                 <DialogTrigger asChild>
                   <Button size="sm">
                     <Plus className="mr-2 h-4 w-4" />
@@ -126,7 +209,7 @@ export default function InitialBalancesPage() {
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Set Bank/Cash Initial Balance</DialogTitle>
+                    <DialogTitle>{editingBankCash ? "Edit" : "Set"} Bank/Cash Initial Balance</DialogTitle>
                   </DialogHeader>
                   <form onSubmit={bankCashForm.handleSubmit(onBankCashSubmit)} className="space-y-4">
                     <div>
@@ -174,9 +257,9 @@ export default function InitialBalancesPage() {
                         <p className="text-sm text-red-500 mt-1">{bankCashForm.formState.errors.date.message}</p>
                       )}
                     </div>
-                    <Button type="submit" disabled={createBankCash.isPending}>
-                      {createBankCash.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Save Balance
+                    <Button type="submit" disabled={createBankCash.isPending || updateBankCash.isPending}>
+                      {(createBankCash.isPending || updateBankCash.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      {editingBankCash ? "Update" : "Save"} Balance
                     </Button>
                   </form>
                 </DialogContent>
@@ -192,18 +275,19 @@ export default function InitialBalancesPage() {
                     <TableHead>Opening Balance (৳)</TableHead>
                     <TableHead>As of Date</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead className="w-[80px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isLoadingBankCash ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center">
+                      <TableCell colSpan={5} className="text-center">
                         <Loader2 className="h-6 w-6 animate-spin mx-auto" />
                       </TableCell>
                     </TableRow>
                   ) : initialBankCash.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center text-muted-foreground">
+                      <TableCell colSpan={5} className="text-center text-muted-foreground">
                         No balances set. Add accounts first, then set initial balances.
                       </TableCell>
                     </TableRow>
@@ -217,6 +301,28 @@ export default function InitialBalancesPage() {
                           <span className={`px-2 py-1 rounded text-xs ${item.is_confirmed ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}`}>
                             {item.is_confirmed ? "Confirmed" : "Pending"}
                           </span>
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleEditBankCash(item)}>
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleDeleteBankCash(item.id)}
+                                className="text-red-600"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     ))
@@ -235,7 +341,7 @@ export default function InitialBalancesPage() {
                 <CardTitle>Expense Heads Opening Balances</CardTitle>
                 <CardDescription>Set initial balances for expense accounts per project</CardDescription>
               </div>
-              <Dialog open={isExpenseHeadOpen} onOpenChange={(open) => open ? openDialog(EXPENSE_HEAD_DIALOG_ID) : closeDialog(EXPENSE_HEAD_DIALOG_ID)}>
+              <Dialog open={isExpenseHeadOpen} onOpenChange={handleExpenseHeadDialogChange}>
                 <DialogTrigger asChild>
                   <Button size="sm">
                     <Plus className="mr-2 h-4 w-4" />
@@ -244,7 +350,7 @@ export default function InitialBalancesPage() {
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Set Expense Head Initial Balance</DialogTitle>
+                    <DialogTitle>{editingExpenseHead ? "Edit" : "Set"} Expense Head Initial Balance</DialogTitle>
                   </DialogHeader>
                   <form onSubmit={expenseHeadForm.handleSubmit(onExpenseHeadSubmit)} className="space-y-4">
                     <div>
@@ -313,9 +419,9 @@ export default function InitialBalancesPage() {
                         <p className="text-sm text-red-500 mt-1">{expenseHeadForm.formState.errors.date.message}</p>
                       )}
                     </div>
-                    <Button type="submit" disabled={createExpenseHead.isPending}>
-                      {createExpenseHead.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Save Balance
+                    <Button type="submit" disabled={createExpenseHead.isPending || updateExpenseHead.isPending}>
+                      {(createExpenseHead.isPending || updateExpenseHead.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      {editingExpenseHead ? "Update" : "Save"} Balance
                     </Button>
                   </form>
                 </DialogContent>
@@ -332,18 +438,19 @@ export default function InitialBalancesPage() {
                     <TableHead>Opening Balance (৳)</TableHead>
                     <TableHead>As of Date</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead className="w-[80px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isLoadingExpenseHeads ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center">
+                      <TableCell colSpan={6} className="text-center">
                         <Loader2 className="h-6 w-6 animate-spin mx-auto" />
                       </TableCell>
                     </TableRow>
                   ) : initialExpenseHeads.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground">
+                      <TableCell colSpan={6} className="text-center text-muted-foreground">
                         No balances set. Add expense heads first, then set initial balances.
                       </TableCell>
                     </TableRow>
@@ -358,6 +465,28 @@ export default function InitialBalancesPage() {
                           <span className={`px-2 py-1 rounded text-xs ${item.is_confirmed ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}`}>
                             {item.is_confirmed ? "Confirmed" : "Pending"}
                           </span>
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleEditExpenseHead(item)}>
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleDeleteExpenseHead(item.id)}
+                                className="text-red-600"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     ))

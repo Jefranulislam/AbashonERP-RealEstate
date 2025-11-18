@@ -20,18 +20,28 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Plus, Loader2 } from "lucide-react"
-import { useBankCashAccounts, useCreateBankCashAccount } from "@/lib/hooks/use-finance"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Plus, Loader2, MoreHorizontal, Pencil, Trash2 } from "lucide-react"
+import { useBankCashAccounts, useCreateBankCashAccount, useUpdateBankCashAccount, useDeleteBankCashAccount } from "@/lib/hooks/use-finance"
 import { useUIStore } from "@/lib/stores/ui-store"
 import { bankCashAccountSchema, type BankCashAccountFormData } from "@/lib/validations/finance"
+import { useState } from "react"
 
 const DIALOG_ID = "bank-cash-dialog"
 
 export default function BankCashPage() {
   const { data: accounts = [], isLoading } = useBankCashAccounts()
   const createAccount = useCreateBankCashAccount()
+  const updateAccount = useUpdateBankCashAccount()
+  const deleteAccount = useDeleteBankCashAccount()
   const { dialogs, openDialog, closeDialog } = useUIStore()
   const isOpen = dialogs[DIALOG_ID] || false
+  const [editingAccount, setEditingAccount] = useState<any>(null)
 
   const form = useForm<BankCashAccountFormData>({
     resolver: zodResolver(bankCashAccountSchema),
@@ -46,16 +56,50 @@ export default function BankCashPage() {
   })
 
   async function onSubmit(data: BankCashAccountFormData) {
-    await createAccount.mutateAsync(data)
+    if (editingAccount) {
+      await updateAccount.mutateAsync({ id: editingAccount.id, data })
+      setEditingAccount(null)
+    } else {
+      await createAccount.mutateAsync(data)
+    }
     form.reset()
     closeDialog(DIALOG_ID)
+  }
+
+  function handleEdit(account: any) {
+    setEditingAccount(account)
+    form.reset({
+      accountTitle: account.account_title,
+      accountNumber: "",
+      bankName: "",
+      branch: "",
+      description: account.description || "",
+      isActive: account.is_active ?? true,
+    })
+    openDialog(DIALOG_ID)
+  }
+
+  async function handleDelete(id: number) {
+    if (confirm("Are you sure you want to delete this bank/cash account?")) {
+      await deleteAccount.mutateAsync(id)
+    }
+  }
+
+  function handleDialogChange(open: boolean) {
+    if (open) {
+      openDialog(DIALOG_ID)
+    } else {
+      closeDialog(DIALOG_ID)
+      setEditingAccount(null)
+      form.reset()
+    }
   }
 
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Bank & Cash Accounts</h1>
-        <Dialog open={isOpen} onOpenChange={(open) => open ? openDialog(DIALOG_ID) : closeDialog(DIALOG_ID)}>
+        <Dialog open={isOpen} onOpenChange={handleDialogChange}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
@@ -64,43 +108,19 @@ export default function BankCashPage() {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add Bank/Cash Account</DialogTitle>
+              <DialogTitle>{editingAccount ? "Edit" : "Add"} Bank/Cash Account</DialogTitle>
             </DialogHeader>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <div>
                 <Label htmlFor="accountTitle">Account Title *</Label>
                 <Input
                   id="accountTitle"
-                  placeholder="e.g., City Bank - Checking"
+                  placeholder="e.g., City Bank - Checking, Cash on Hand"
                   {...form.register("accountTitle")}
                 />
                 {form.formState.errors.accountTitle && (
                   <p className="text-sm text-red-500 mt-1">{form.formState.errors.accountTitle.message}</p>
                 )}
-              </div>
-              <div>
-                <Label htmlFor="accountNumber">Account Number</Label>
-                <Input
-                  id="accountNumber"
-                  placeholder="Account number"
-                  {...form.register("accountNumber")}
-                />
-              </div>
-              <div>
-                <Label htmlFor="bankName">Bank Name</Label>
-                <Input
-                  id="bankName"
-                  placeholder="Bank name (if applicable)"
-                  {...form.register("bankName")}
-                />
-              </div>
-              <div>
-                <Label htmlFor="branch">Branch</Label>
-                <Input
-                  id="branch"
-                  placeholder="Branch name"
-                  {...form.register("branch")}
-                />
               </div>
               <div>
                 <Label htmlFor="description">Description</Label>
@@ -110,9 +130,9 @@ export default function BankCashPage() {
                   {...form.register("description")}
                 />
               </div>
-              <Button type="submit" disabled={createAccount.isPending}>
-                {createAccount.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Save Account
+              <Button type="submit" disabled={createAccount.isPending || updateAccount.isPending}>
+                {(createAccount.isPending || updateAccount.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {editingAccount ? "Update" : "Save"} Account
               </Button>
             </form>
           </DialogContent>
@@ -125,22 +145,21 @@ export default function BankCashPage() {
             <TableRow>
               <TableHead>SL No.</TableHead>
               <TableHead>Account Title</TableHead>
-              <TableHead>Bank Name</TableHead>
-              <TableHead>Account Number</TableHead>
-              <TableHead>Branch</TableHead>
+              <TableHead>Description</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead className="w-[80px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center">
+                <TableCell colSpan={5} className="text-center">
                   <Loader2 className="h-6 w-6 animate-spin mx-auto" />
                 </TableCell>
               </TableRow>
             ) : accounts.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground">
+                <TableCell colSpan={5} className="text-center text-muted-foreground">
                   No accounts found. Click "Add Account" to create one.
                 </TableCell>
               </TableRow>
@@ -149,13 +168,33 @@ export default function BankCashPage() {
                 <TableRow key={account.id}>
                   <TableCell>{index + 1}</TableCell>
                   <TableCell>{account.account_title}</TableCell>
-                  <TableCell>{account.bank_name || "-"}</TableCell>
-                  <TableCell>{account.account_number || "-"}</TableCell>
-                  <TableCell>{account.branch || "-"}</TableCell>
+                  <TableCell>{account.description || "-"}</TableCell>
                   <TableCell>
                     <span className={`px-2 py-1 rounded text-xs ${account.is_active ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}`}>
                       {account.is_active ? "Active" : "Inactive"}
                     </span>
+                  </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleEdit(account)}>
+                          <Pencil className="mr-2 h-4 w-4" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => handleDelete(account.id)}
+                          className="text-red-600"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))

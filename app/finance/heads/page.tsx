@@ -28,10 +28,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Plus, Loader2 } from "lucide-react"
-import { useFinanceTypes, useExpenseHeads, useCreateExpenseHead } from "@/lib/hooks/use-finance"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Plus, Loader2, MoreHorizontal, Pencil, Trash2 } from "lucide-react"
+import { useFinanceTypes, useExpenseHeads, useCreateExpenseHead, useUpdateExpenseHead, useDeleteExpenseHead } from "@/lib/hooks/use-finance"
 import { useUIStore } from "@/lib/stores/ui-store"
 import { expenseHeadSchema, type ExpenseHeadFormData } from "@/lib/validations/finance"
+import { useState } from "react"
 
 const DIALOG_ID = "expense-head-dialog"
 
@@ -39,8 +46,11 @@ export default function ExpenseHeadsPage() {
   const { data: heads = [], isLoading } = useExpenseHeads()
   const { data: types = [] } = useFinanceTypes()
   const createHead = useCreateExpenseHead()
+  const updateHead = useUpdateExpenseHead()
+  const deleteHead = useDeleteExpenseHead()
   const { dialogs, openDialog, closeDialog } = useUIStore()
   const isOpen = dialogs[DIALOG_ID] || false
+  const [editingHead, setEditingHead] = useState<any>(null)
 
   const form = useForm<ExpenseHeadFormData>({
     resolver: zodResolver(expenseHeadSchema),
@@ -53,16 +63,48 @@ export default function ExpenseHeadsPage() {
   })
 
   async function onSubmit(data: ExpenseHeadFormData) {
-    await createHead.mutateAsync(data)
+    if (editingHead) {
+      await updateHead.mutateAsync({ id: editingHead.id, data })
+      setEditingHead(null)
+    } else {
+      await createHead.mutateAsync(data)
+    }
     form.reset()
     closeDialog(DIALOG_ID)
+  }
+
+  function handleEdit(head: any) {
+    setEditingHead(head)
+    form.reset({
+      headName: head.head_name,
+      incExpTypeId: head.inc_exp_type_id || undefined,
+      description: head.description || "",
+      isActive: head.is_active ?? true,
+    })
+    openDialog(DIALOG_ID)
+  }
+
+  async function handleDelete(id: number) {
+    if (confirm("Are you sure you want to delete this expense head?")) {
+      await deleteHead.mutateAsync(id)
+    }
+  }
+
+  function handleDialogChange(open: boolean) {
+    if (open) {
+      openDialog(DIALOG_ID)
+    } else {
+      closeDialog(DIALOG_ID)
+      setEditingHead(null)
+      form.reset()
+    }
   }
 
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Income/Expense Heads</h1>
-        <Dialog open={isOpen} onOpenChange={(open) => open ? openDialog(DIALOG_ID) : closeDialog(DIALOG_ID)}>
+        <Dialog open={isOpen} onOpenChange={handleDialogChange}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
@@ -71,7 +113,7 @@ export default function ExpenseHeadsPage() {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add Income/Expense Head</DialogTitle>
+              <DialogTitle>{editingHead ? "Edit" : "Add"} Income/Expense Head</DialogTitle>
             </DialogHeader>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <div>
@@ -114,9 +156,9 @@ export default function ExpenseHeadsPage() {
                   {...form.register("description")}
                 />
               </div>
-              <Button type="submit" disabled={createHead.isPending}>
-                {createHead.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Save Head
+              <Button type="submit" disabled={createHead.isPending || updateHead.isPending}>
+                {(createHead.isPending || updateHead.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {editingHead ? "Update" : "Save"} Head
               </Button>
             </form>
           </DialogContent>
@@ -132,18 +174,19 @@ export default function ExpenseHeadsPage() {
               <TableHead>Type</TableHead>
               <TableHead>Description</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead className="w-[80px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center">
+                <TableCell colSpan={6} className="text-center">
                   <Loader2 className="h-6 w-6 animate-spin mx-auto" />
                 </TableCell>
               </TableRow>
             ) : heads.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
+                <TableCell colSpan={6} className="text-center text-muted-foreground">
                   No heads found. Click "Add Head" to create one.
                 </TableCell>
               </TableRow>
@@ -158,6 +201,28 @@ export default function ExpenseHeadsPage() {
                     <span className="px-2 py-1 rounded text-xs bg-green-100 text-green-800">
                       Active
                     </span>
+                  </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleEdit(head)}>
+                          <Pencil className="mr-2 h-4 w-4" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => handleDelete(head.id)}
+                          className="text-red-600"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))
