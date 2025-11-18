@@ -15,9 +15,10 @@ export function useFinanceTypes() {
       const data = await res.json()
       return data.types || []
     },
-    staleTime: 0,
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
+    staleTime: 5 * 60 * 1000, // ✅ Data fresh for 5 minutes
+    refetchOnMount: false, // ✅ Use cached data on mount
+    refetchOnWindowFocus: false, // ✅ Don't refetch on tab switch
+    gcTime: 10 * 60 * 1000, // ✅ Keep in cache for 10 minutes
   })
 }
 
@@ -39,8 +40,8 @@ export function useCreateFinanceType() {
       return res.json()
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["finance-types"] })
-      await queryClient.refetchQueries({ queryKey: ["finance-types"], type: 'active' })
+      // ✅ Only invalidate - React Query will refetch automatically if the component is mounted
+      queryClient.invalidateQueries({ queryKey: ["finance-types"] })
       toast({ title: "Success", description: "Finance type created successfully" })
     },
     onError: (error: Error) => {
@@ -68,7 +69,7 @@ export function useUpdateFinanceType() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["finance-types"] })
-      await queryClient.refetchQueries({ queryKey: ["finance-types"], type: 'active' })
+      
       toast({ title: "Success", description: "Finance type updated successfully" })
     },
     onError: (error: Error) => {
@@ -94,7 +95,7 @@ export function useDeleteFinanceType() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["finance-types"] })
-      await queryClient.refetchQueries({ queryKey: ["finance-types"], type: 'active' })
+      
       toast({ title: "Success", description: "Finance type deleted successfully" })
     },
     onError: (error: Error) => {
@@ -117,9 +118,10 @@ export function useExpenseHeads() {
       const data = await res.json()
       return data.expenseHeads || []
     },
-    staleTime: 0,
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
+    staleTime: 5 * 60 * 1000, // ✅ Data fresh for 5 minutes
+    refetchOnMount: false, // ✅ Use cached data on mount
+    refetchOnWindowFocus: false, // ✅ Don't refetch on tab switch
+    gcTime: 10 * 60 * 1000, // ✅ Keep in cache for 10 minutes
   })
 }
 
@@ -147,7 +149,7 @@ export function useCreateExpenseHead() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["expense-heads"] })
-      await queryClient.refetchQueries({ queryKey: ["expense-heads"], type: 'active' })
+      
       toast({ title: "Success", description: "Expense head created successfully" })
     },
     onError: (error: Error) => {
@@ -183,7 +185,7 @@ export function useUpdateExpenseHead() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["expense-heads"] })
-      await queryClient.refetchQueries({ queryKey: ["expense-heads"], type: 'active' })
+      
       toast({ title: "Success", description: "Expense head updated successfully" })
     },
     onError: (error: Error) => {
@@ -209,7 +211,7 @@ export function useDeleteExpenseHead() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["expense-heads"] })
-      await queryClient.refetchQueries({ queryKey: ["expense-heads"], type: 'active' })
+      
       toast({ title: "Success", description: "Expense head deleted successfully" })
     },
     onError: (error: Error) => {
@@ -232,9 +234,10 @@ export function useBankCashAccounts() {
       const data = await res.json()
       return data.bankCashAccounts || []
     },
-    staleTime: 0,
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
+    staleTime: 5 * 60 * 1000, // ✅ Data fresh for 5 minutes
+    refetchOnMount: false, // ✅ Use cached data on mount
+    refetchOnWindowFocus: false, // ✅ Don't refetch on tab switch
+    gcTime: 10 * 60 * 1000, // ✅ Keep in cache for 10 minutes
   })
 }
 
@@ -264,7 +267,7 @@ export function useCreateBankCashAccount() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["bank-cash-accounts"] })
-      await queryClient.refetchQueries({ queryKey: ["bank-cash-accounts"], type: 'active' })
+      
       toast({ title: "Success", description: "Account created successfully" })
     },
     onError: (error: Error) => {
@@ -302,7 +305,7 @@ export function useUpdateBankCashAccount() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["bank-cash-accounts"] })
-      await queryClient.refetchQueries({ queryKey: ["bank-cash-accounts"], type: 'active' })
+      
       toast({ title: "Success", description: "Account updated successfully" })
     },
     onError: (error: Error) => {
@@ -328,7 +331,7 @@ export function useDeleteBankCashAccount() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["bank-cash-accounts"] })
-      await queryClient.refetchQueries({ queryKey: ["bank-cash-accounts"], type: 'active' })
+      
       toast({ title: "Success", description: "Account deleted successfully" })
     },
     onError: (error: Error) => {
@@ -351,6 +354,10 @@ export function useInitialBankCash() {
       const data = await res.json()
       return data.initialBankCash || []
     },
+    staleTime: 5 * 60 * 1000, // ✅ Data fresh for 5 minutes
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    gcTime: 10 * 60 * 1000,
   })
 }
 
@@ -460,6 +467,10 @@ export function useInitialExpenseHeads() {
       const data = await res.json()
       return data.initialExpenseHeads || []
     },
+    staleTime: 5 * 60 * 1000, // ✅ Data fresh for 5 minutes
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    gcTime: 10 * 60 * 1000,
   })
 }
 
@@ -571,5 +582,9 @@ export function useProjects() {
       const data = await res.json()
       return data.projects || []
     },
+    staleTime: 5 * 60 * 1000, // ✅ Data fresh for 5 minutes
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    gcTime: 10 * 60 * 1000,
   })
 }

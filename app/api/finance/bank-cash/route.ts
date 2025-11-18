@@ -2,6 +2,11 @@ import { type NextRequest, NextResponse } from "next/server"
 import { sql } from "@/lib/db"
 import { getCurrentUser } from "@/lib/auth"
 
+// ✅ Use Edge runtime for faster cold starts
+export const runtime = 'edge'
+// ✅ Cache GET requests for 60 seconds
+export const revalidate = 60
+
 export async function GET() {
   try {
     const user = await getCurrentUser()
