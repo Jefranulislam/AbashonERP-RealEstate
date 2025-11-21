@@ -84,6 +84,22 @@ export default function PurchaseRequisitionsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    // Validate required fields
+    if (!formData.projectId || !formData.employeeId) {
+      alert("Please select both Project and Employee")
+      return
+    }
+
+    // Validate at least one item with required fields
+    const hasValidItems = items.some(
+      (item) => item.expenseHeadId && item.description && item.qty && item.rate
+    )
+
+    if (!hasValidItems) {
+      alert("Please add at least one item with all required fields (Expense Head, Description, Qty, Rate)")
+      return
+    }
+
     try {
       await axios.post("/api/purchase/requisitions", {
         ...formData,
@@ -92,8 +108,10 @@ export default function PurchaseRequisitionsPage() {
       fetchRequisitions()
       setDialogOpen(false)
       resetForm()
+      alert("Requisition submitted successfully!")
     } catch (error) {
       console.error("[v0] Error saving requisition:", error)
+      alert("Error submitting requisition. Please try again.")
     }
   }
 
@@ -174,7 +192,7 @@ export default function PurchaseRequisitionsPage() {
               Add Requisition
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
+          <DialogContent className="max-h-[90vh] w-[95vw] max-w-[1200px] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Add New Requisition</DialogTitle>
               <DialogDescription>Fill in the requisition information below</DialogDescription>
@@ -186,6 +204,7 @@ export default function PurchaseRequisitionsPage() {
                   <Select
                     value={formData.projectId}
                     onValueChange={(value) => setFormData({ ...formData, projectId: value })}
+                    required
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select project" />
@@ -204,6 +223,7 @@ export default function PurchaseRequisitionsPage() {
                   <Select
                     value={formData.employeeId}
                     onValueChange={(value) => setFormData({ ...formData, employeeId: value })}
+                    required
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select employee" />
@@ -264,21 +284,22 @@ export default function PurchaseRequisitionsPage() {
 
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <Label>Items</Label>
+                  <Label className="text-lg font-semibold">Items *</Label>
                   <Button type="button" variant="outline" size="sm" onClick={addItem}>
                     <Plus className="mr-2 h-4 w-4" />
                     Add Item
                   </Button>
                 </div>
                 {items.map((item, index) => (
-                  <Card key={index}>
+                  <Card key={index} className="border-2">
                     <CardContent className="pt-6">
                       <div className="grid gap-4 md:grid-cols-5">
                         <div className="space-y-2">
-                          <Label>Expense Head</Label>
+                          <Label>Expense Head *</Label>
                           <Select
                             value={item.expenseHeadId}
                             onValueChange={(value) => updateItem(index, "expenseHeadId", value)}
+                            required
                           >
                             <SelectTrigger>
                               <SelectValue placeholder="Select" />
@@ -293,34 +314,40 @@ export default function PurchaseRequisitionsPage() {
                           </Select>
                         </div>
                         <div className="space-y-2">
-                          <Label>Description</Label>
+                          <Label>Description *</Label>
                           <Input
                             value={item.description}
                             onChange={(e) => updateItem(index, "description", e.target.value)}
+                            placeholder="Item description"
+                            required
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label>Qty</Label>
+                          <Label>Qty *</Label>
                           <Input
                             type="number"
                             step="0.01"
                             value={item.qty}
                             onChange={(e) => updateItem(index, "qty", e.target.value)}
+                            placeholder="0"
+                            required
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label>Rate</Label>
+                          <Label>Rate *</Label>
                           <Input
                             type="number"
                             step="0.01"
                             value={item.rate}
                             onChange={(e) => updateItem(index, "rate", e.target.value)}
+                            placeholder="0.00"
+                            required
                           />
                         </div>
                         <div className="space-y-2">
                           <Label>Total</Label>
                           <div className="flex gap-2">
-                            <Input value={item.totalPrice} readOnly />
+                            <Input value={item.totalPrice} readOnly className="bg-muted" />
                             {items.length > 1 && (
                               <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(index)}>
                                 <X className="h-4 w-4" />
@@ -332,16 +359,18 @@ export default function PurchaseRequisitionsPage() {
                     </CardContent>
                   </Card>
                 ))}
-                <div className="flex justify-end">
-                  <div className="text-lg font-semibold">Total Amount: ${getTotalAmount()}</div>
+                <div className="flex justify-end bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
+                  <div className="text-xl font-bold text-blue-900">Total Amount: ৳{getTotalAmount()}</div>
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2">
+              <div className="flex justify-end gap-2 pt-4 border-t">
                 <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit">Submit Requisition</Button>
+                <Button type="submit" size="lg" className="min-w-[200px]">
+                  Submit Requisition
+                </Button>
               </div>
             </form>
           </DialogContent>
@@ -429,7 +458,7 @@ export default function PurchaseRequisitionsPage() {
       </Card>
 
       <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="max-w-[1200px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Requisition Details</DialogTitle>
             <DialogDescription>MPR NO: {selectedRequisition?.mpr_no}</DialogDescription>
