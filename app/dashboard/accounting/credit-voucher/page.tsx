@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Plus, Trash2, Printer, Search } from "lucide-react"
@@ -28,12 +28,17 @@ import { useProjects } from "@/lib/hooks/use-finance"
 import { useExpenseHeads } from "@/lib/hooks/use-finance"
 import { useBankCashAccounts } from "@/lib/hooks/use-finance"
 import { useUIStore } from "@/lib/stores/ui-store"
+import { AccountingVoucherPDF } from "@/components/pdf/accounting-voucher-pdf"
+import { printDocument, getCompanySettings } from "@/lib/pdf-utils"
 
 const DIALOG_ID = "credit-voucher-form"
 
 export default function CreditVoucherPage() {
   const [projectFilter, setProjectFilter] = useState<number>()
   const [searchTerm, setSearchTerm] = useState("")
+  const [printDialogOpen, setPrintDialogOpen] = useState(false)
+  const [selectedVoucher, setSelectedVoucher] = useState<any>(null)
+  const [companySettings, setCompanySettings] = useState<any>(null)
 
   // UI State
   const { dialogs, openDialog, closeDialog } = useUIStore()
@@ -86,16 +91,58 @@ export default function CreditVoucherPage() {
     }
   }
 
+  // Load company settings for PDF
+  useEffect(() => {
+    loadCompanySettings()
+  }, [])
+
+  const loadCompanySettings = async () => {
+    const settings = await getCompanySettings()
+    setCompanySettings(settings)
+  }
+
   // Delete handler
   async function handleDelete(id: number) {
     if (!confirm("Are you sure you want to delete this credit voucher?")) return
     await deleteVoucher.mutateAsync(id)
   }
 
-  // Print handler (placeholder)
+  // Print handler
   function handlePrint(voucher: any) {
-    console.log("Print voucher:", voucher)
-    // TODO: Implement print functionality
+    // Transform voucher data to match PDF component structure
+    const voucherForPDF = {
+      voucher_no: voucher.voucher_no,
+      voucher_date: voucher.date,
+      voucher_type: 'credit' as const,
+      total_amount: voucher.amount,
+      narration: voucher.particulars,
+      created_by: voucher.created_by_name,
+    }
+
+    // Create entries array (credit voucher has one debit to bank/cash and one credit to income)
+    const entries = [
+      {
+        ledger_name: voucher.bank_cash_name,
+        head_type: 'Bank/Cash',
+        debit: voucher.amount,
+        credit: 0,
+        narration: voucher.particulars,
+      },
+      {
+        ledger_name: voucher.expense_head_name,
+        head_type: 'Income',
+        debit: 0,
+        credit: voucher.amount,
+        narration: voucher.particulars,
+      },
+    ]
+
+    setSelectedVoucher({ voucher: voucherForPDF, entries })
+    setPrintDialogOpen(true)
+    
+    setTimeout(() => {
+      printDocument('print-voucher-content')
+    }, 100)
   }
 
   return (
@@ -408,6 +455,21 @@ export default function CreditVoucherPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Hidden Print Content */}
+      <div className="hidden">
+        {printDialogOpen && selectedVoucher && companySettings && (
+          <div id="print-voucher-content">
+            <AccountingVoucherPDF
+              voucher={selectedVoucher.voucher}
+              entries={selectedVoucher.entries}
+              companyName={companySettings.company_name}
+              companyAddress={companySettings.address}
+              currencySymbol={companySettings.currency_symbol}
+            />
+          </div>
+        )}
+      </div>
     </div>
   )
 }

@@ -18,9 +18,11 @@ import {
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { Plus, Search, Trash2, Eye, X } from "lucide-react"
+import { Plus, Search, Trash2, Eye, X, Printer } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import axios from "axios"
+import { PurchaseRequisitionPDF } from "@/components/pdf/purchase-requisition-pdf"
+import { printDocument, getCompanySettings } from "@/lib/pdf-utils"
 
 export default function PurchaseRequisitionsPage() {
   const [requisitions, setRequisitions] = useState<any[]>([])
@@ -31,8 +33,10 @@ export default function PurchaseRequisitionsPage() {
   const [search, setSearch] = useState("")
   const [dialogOpen, setDialogOpen] = useState(false)
   const [viewDialogOpen, setViewDialogOpen] = useState(false)
+  const [printDialogOpen, setPrintDialogOpen] = useState(false)
   const [selectedRequisition, setSelectedRequisition] = useState<any>(null)
   const [requisitionItems, setRequisitionItems] = useState<any[]>([])
+  const [companySettings, setCompanySettings] = useState<any>(null)
   const [formData, setFormData] = useState({
     projectId: "",
     employeeId: "",
@@ -79,7 +83,30 @@ export default function PurchaseRequisitionsPage() {
   useEffect(() => {
     fetchRequisitions()
     fetchData()
+    loadCompanySettings()
   }, [search])
+
+  const loadCompanySettings = async () => {
+    const settings = await getCompanySettings()
+    setCompanySettings(settings)
+  }
+
+  const handlePrintRequisition = async (requisition: any) => {
+    try {
+      const response = await axios.get(`/api/purchase/requisitions/${requisition.id}`)
+      setSelectedRequisition(response.data.requisition)
+      setRequisitionItems(response.data.items)
+      setPrintDialogOpen(true)
+      
+      // Trigger print after a short delay to ensure content is rendered
+      setTimeout(() => {
+        printDocument('print-requisition-content')
+      }, 100)
+    } catch (error) {
+      console.error("[v0] Error fetching requisition for print:", error)
+      alert("Error loading requisition for printing")
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -439,10 +466,28 @@ export default function PurchaseRequisitionsPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="icon" onClick={() => handleViewRequisition(requisition)}>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => handlePrintRequisition(requisition)}
+                              title="Print"
+                            >
+                              <Printer className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => handleViewRequisition(requisition)}
+                              title="View Details"
+                            >
                               <Eye className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleDelete(requisition.id)}>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => handleDelete(requisition.id)}
+                              title="Delete"
+                            >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
@@ -528,6 +573,21 @@ export default function PurchaseRequisitionsPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Hidden Print Dialog */}
+      <div className="hidden">
+        {printDialogOpen && selectedRequisition && requisitionItems.length > 0 && companySettings && (
+          <div id="print-requisition-content">
+            <PurchaseRequisitionPDF
+              requisition={selectedRequisition}
+              items={requisitionItems}
+              companyName={companySettings.company_name}
+              companyAddress={companySettings.address}
+              currencySymbol={companySettings.currency_symbol}
+            />
+          </div>
+        )}
+      </div>
     </div>
   )
 }
