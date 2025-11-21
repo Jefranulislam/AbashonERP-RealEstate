@@ -2,6 +2,9 @@ import { type NextRequest, NextResponse } from "next/server"
 import { sql } from "@/lib/db"
 import { getCurrentUser } from "@/lib/auth"
 
+export const runtime = 'edge'
+export const revalidate = 60
+
 export async function GET() {
   try {
     const user = await getCurrentUser()
@@ -11,7 +14,6 @@ export async function GET() {
 
     const locations = await sql`
       SELECT * FROM project_locations
-      WHERE is_active = true
       ORDER BY name ASC
     `
 

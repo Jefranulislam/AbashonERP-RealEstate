@@ -35,9 +35,22 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
     const { id } = await params
 
+    // Check if location is used by any projects
+    const projectsUsingLocation = await sql`
+      SELECT COUNT(*) as count FROM projects
+      WHERE project_location_id = ${id}
+    `
+
+    if (projectsUsingLocation[0].count > 0) {
+      return NextResponse.json(
+        { error: `Cannot delete location. It is being used by ${projectsUsingLocation[0].count} project(s).` },
+        { status: 400 }
+      )
+    }
+
+    // Hard delete - actually remove from database
     await sql`
-      UPDATE project_locations
-      SET is_active = false, updated_at = CURRENT_TIMESTAMP
+      DELETE FROM project_locations
       WHERE id = ${id}
     `
 

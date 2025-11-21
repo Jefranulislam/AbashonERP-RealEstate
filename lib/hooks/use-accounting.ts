@@ -17,10 +17,15 @@ interface Voucher {
   expense_head_name?: string
   bank_cash_id?: number
   bank_cash_name?: string
+  dr_bank_cash_id?: number
+  dr_bank_cash_name?: string
+  cr_bank_cash_id?: number
+  cr_bank_cash_name?: string
   bill_no?: string
   date: string
   amount: number
   particulars?: string
+  description?: string
   cheque_number?: string
   is_confirmed: boolean
   created_at: string

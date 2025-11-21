@@ -1,9 +1,9 @@
-"use client"
+﻿"use client"
 
 import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Plus, Trash2, Printer, Search, AlertCircle } from "lucide-react"
+import { Plus, Trash2, Printer, Search, Scale } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -21,11 +21,11 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Badge } from "@/components/ui/badge"
 
 import { journalVoucherSchema, type JournalVoucherFormData } from "@/lib/validations/accounting"
 import { useJournalVouchers, useCreateJournalVoucher, useDeleteVoucher } from "@/lib/hooks/use-accounting"
-import { useProjects } from "@/lib/hooks/use-finance"
-import { useExpenseHeads } from "@/lib/hooks/use-finance"
+import { useProjects, useExpenseHeads } from "@/lib/hooks/use-finance"
 import { useUIStore } from "@/lib/stores/ui-store"
 
 const DIALOG_ID = "journal-voucher-form"
@@ -34,11 +34,9 @@ export default function JournalVoucherPage() {
   const [projectFilter, setProjectFilter] = useState<number>()
   const [searchTerm, setSearchTerm] = useState("")
 
-  // UI State
   const { dialogs, openDialog, closeDialog } = useUIStore()
   const isDialogOpen = dialogs[DIALOG_ID] || false
 
-  // React Query hooks
   const { data: vouchers = [], isLoading: vouchersLoading } = useJournalVouchers(projectFilter)
   const { data: projects = [], isLoading: projectsLoading } = useProjects()
   const { data: expenseHeads = [], isLoading: expenseHeadsLoading } = useExpenseHeads()
@@ -46,7 +44,6 @@ export default function JournalVoucherPage() {
   const createVoucher = useCreateJournalVoucher()
   const deleteVoucher = useDeleteVoucher()
 
-  // React Hook Form
   const form = useForm<JournalVoucherFormData>({
     resolver: zodResolver(journalVoucherSchema),
     defaultValues: {
@@ -67,7 +64,6 @@ export default function JournalVoucherPage() {
   const crAmount = form.watch("crAmount")
   const isBalanced = drAmount === crAmount && drAmount > 0
 
-  // Auto-sync amounts when one changes
   useEffect(() => {
     if (drAmount > 0 && crAmount === 0) {
       form.setValue("crAmount", drAmount)
@@ -80,197 +76,267 @@ export default function JournalVoucherPage() {
     }
   }, [crAmount, form])
 
-  // Filter vouchers by search term
   const filteredVouchers = vouchers.filter((voucher) => {
     if (!searchTerm) return true
     const search = searchTerm.toLowerCase()
     return (
       voucher.voucher_no?.toLowerCase().includes(search) ||
       voucher.project_name?.toLowerCase().includes(search) ||
-      voucher.expense_head_name?.toLowerCase().includes(search) ||
       voucher.bill_no?.toLowerCase().includes(search)
     )
   })
 
-  // Form submission
-  async function onSubmit(data: CreditVoucherFormData) {
+  async function onSubmit(data: JournalVoucherFormData) {
     try {
       await createVoucher.mutateAsync(data)
-      form.reset()
+      form.reset({
+        drProjectId: 0,
+        drExpenseHeadId: 0,
+        drAmount: 0,
+        crProjectId: 0,
+        crExpenseHeadId: 0,
+        crAmount: 0,
+        billNo: "",
+        date: new Date().toISOString().split("T")[0],
+        description: "",
+        isConfirmed: false,
+      })
       closeDialog(DIALOG_ID)
     } catch (error) {
       // Error handled by mutation
     }
   }
 
-  // Delete handler
   async function handleDelete(id: number) {
-    if (!confirm("Are you sure you want to delete this credit voucher?")) return
+    if (!confirm("Are you sure you want to delete this journal voucher?")) return
     await deleteVoucher.mutateAsync(id)
   }
 
-  // Print handler (placeholder)
   function handlePrint(voucher: any) {
-    console.log("Print voucher:", voucher)
-    // TODO: Implement print functionality
+    console.log("Print journal voucher:", voucher)
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Credit Voucher</h1>
-          <p className="text-muted-foreground">Record income and credit transactions (Receipts)</p>
+          <h1 className="text-3xl font-bold tracking-tight">Journal Voucher</h1>
+          <p className="text-muted-foreground">Record journal entries with debit and credit (Double Entry System)</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={(open) => open ? openDialog(DIALOG_ID) : closeDialog(DIALOG_ID)}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
-              Add Credit Voucher
+              Add Journal Entry
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Add New Credit Voucher</DialogTitle>
+              <DialogTitle>Add New Journal Voucher</DialogTitle>
               <DialogDescription>
-                Fill in the credit voucher information below. All fields marked with * are required.
+                Fill in the journal entry details. Debit and Credit amounts must be equal.
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                {/* Project Name */}
-                <div className="space-y-2">
-                  <Label htmlFor="projectId">Project Name *</Label>
-                  <Select
-                    value={form.watch("projectId")?.toString()}
-                    onValueChange={(value) => form.setValue("projectId", parseInt(value))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select project" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {projectsLoading ? (
-                        <SelectItem value="loading" disabled>Loading...</SelectItem>
-                      ) : (
-                        projects.map((project: any) => (
-                          <SelectItem key={project.id} value={project.id.toString()}>
-                            {project.project_name}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                  {form.formState.errors.projectId && (
-                    <p className="text-sm text-destructive">{form.formState.errors.projectId.message}</p>
-                  )}
-                </div>
+              <div className={`flex items-center justify-center gap-2 p-3 rounded-lg $${
+                isBalanced 
+                  ? "bg-green-50 border border-green-200" 
+                  : "bg-yellow-50 border border-yellow-200"
+              }`}>
+                <Scale className={`h-5 w-5 ${isBalanced ? "text-green-600" : "text-yellow-600"}`} />
+                <span className={`font-medium $${isBalanced ? "text-green-700" : "text-yellow-700"}`}>
+                  {isBalanced 
+                    ? ` Balanced (Dr: ${drAmount.toLocaleString()} = Cr: ${crAmount.toLocaleString()})` 
+                    : ` Not Balanced (Dr: ${drAmount.toLocaleString()}  Cr: ${crAmount.toLocaleString()})`
+                  }
+                </span>
+              </div>
 
-                {/* Cash Type */}
-                <div className="space-y-2">
-                  <Label htmlFor="bankCashId">Cash Type *</Label>
-                  <Select
-                    value={form.watch("bankCashId")?.toString()}
-                    onValueChange={(value) => form.setValue("bankCashId", parseInt(value))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select account" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {bankCashLoading ? (
-                        <SelectItem value="loading" disabled>Loading...</SelectItem>
-                      ) : (
-                        bankCashAccounts.map((account: any) => (
-                          <SelectItem key={account.id} value={account.id.toString()}>
-                            {account.account_title}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                  {form.formState.errors.bankCashId && (
-                    <p className="text-sm text-destructive">{form.formState.errors.bankCashId.message}</p>
-                  )}
-                </div>
+              <div className="border-2 border-blue-200 rounded-lg p-4 bg-blue-50">
+                <h3 className="text-lg font-semibold mb-3 text-blue-900 flex items-center gap-2">
+                  <span className="bg-blue-600 text-white px-2 py-1 rounded text-sm">DEBIT</span>
+                  Debit Entry (Dr)
+                </h3>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="drProjectId">Debit Project *</Label>
+                    <Select
+                      value={form.watch("drProjectId")?.toString()}
+                      onValueChange={(value) => form.setValue("drProjectId", parseInt(value))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select debit project" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {projectsLoading ? (
+                          <SelectItem value="loading" disabled>Loading...</SelectItem>
+                        ) : (
+                          projects.map((project: any) => (
+                            <SelectItem key={project.id} value={project.id.toString()}>
+                              {project.project_name}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    {form.formState.errors.drProjectId && (
+                      <p className="text-sm text-destructive">{form.formState.errors.drProjectId.message}</p>
+                    )}
+                  </div>
 
-                {/* Head of Account */}
-                <div className="space-y-2">
-                  <Label htmlFor="expenseHeadId">Head of Account *</Label>
-                  <Select
-                    value={form.watch("expenseHeadId")?.toString()}
-                    onValueChange={(value) => form.setValue("expenseHeadId", parseInt(value))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select income head" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {expenseHeadsLoading ? (
-                        <SelectItem value="loading" disabled>Loading...</SelectItem>
-                      ) : (
-                        expenseHeads.map((head: any) => (
-                          <SelectItem key={head.id} value={head.id.toString()}>
-                            {head.head_name}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                  {form.formState.errors.expenseHeadId && (
-                    <p className="text-sm text-destructive">{form.formState.errors.expenseHeadId.message}</p>
-                  )}
-                </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="drExpenseHeadId">Debit Head of Account *</Label>
+                    <Select
+                      value={form.watch("drExpenseHeadId")?.toString()}
+                      onValueChange={(value) => form.setValue("drExpenseHeadId", parseInt(value))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select debit account" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {expenseHeadsLoading ? (
+                          <SelectItem value="loading" disabled>Loading...</SelectItem>
+                        ) : (
+                          expenseHeads.map((head: any) => (
+                            <SelectItem key={head.id} value={head.id.toString()}>
+                              {head.head_name}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    {form.formState.errors.drExpenseHeadId && (
+                      <p className="text-sm text-destructive">{form.formState.errors.drExpenseHeadId.message}</p>
+                    )}
+                  </div>
 
-                {/* M.R/Bill No */}
-                <div className="space-y-2">
-                  <Label htmlFor="billNo">M.R/Bill No</Label>
-                  <Input
-                    id="billNo"
-                    {...form.register("billNo")}
-                    placeholder="Enter bill number"
-                  />
-                </div>
-
-                {/* Date */}
-                <div className="space-y-2">
-                  <Label htmlFor="date">Date *</Label>
-                  <Input
-                    id="date"
-                    type="date"
-                    {...form.register("date")}
-                  />
-                  {form.formState.errors.date && (
-                    <p className="text-sm text-destructive">{form.formState.errors.date.message}</p>
-                  )}
-                </div>
-
-                {/* Amount */}
-                <div className="space-y-2">
-                  <Label htmlFor="amount">Amount *</Label>
-                  <Input
-                    id="amount"
-                    type="number"
-                    step="0.01"
-                    {...form.register("amount", { valueAsNumber: true })}
-                    placeholder="0.00"
-                  />
-                  {form.formState.errors.amount && (
-                    <p className="text-sm text-destructive">{form.formState.errors.amount.message}</p>
-                  )}
+                  <div className="space-y-2">
+                    <Label htmlFor="drAmount">Debit Amount *</Label>
+                    <Input
+                      id="drAmount"
+                      type="number"
+                      step="0.01"
+                      {...form.register("drAmount", { valueAsNumber: true })}
+                      placeholder="0.00"
+                      className="bg-white"
+                    />
+                    {form.formState.errors.drAmount && (
+                      <p className="text-sm text-destructive">{form.formState.errors.drAmount.message}</p>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* Particulars */}
-              <div className="space-y-2">
-                <Label htmlFor="particulars">Particulars</Label>
-                <Textarea
-                  id="particulars"
-                  {...form.register("particulars")}
-                  placeholder="Enter transaction details"
-                  rows={3}
-                />
+              <div className="border-2 border-green-200 rounded-lg p-4 bg-green-50">
+                <h3 className="text-lg font-semibold mb-3 text-green-900 flex items-center gap-2">
+                  <span className="bg-green-600 text-white px-2 py-1 rounded text-sm">CREDIT</span>
+                  Credit Entry (Cr)
+                </h3>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="crProjectId">Credit Project *</Label>
+                    <Select
+                      value={form.watch("crProjectId")?.toString()}
+                      onValueChange={(value) => form.setValue("crProjectId", parseInt(value))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select credit project" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {projectsLoading ? (
+                          <SelectItem value="loading" disabled>Loading...</SelectItem>
+                        ) : (
+                          projects.map((project: any) => (
+                            <SelectItem key={project.id} value={project.id.toString()}>
+                              {project.project_name}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    {form.formState.errors.crProjectId && (
+                      <p className="text-sm text-destructive">{form.formState.errors.crProjectId.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="crExpenseHeadId">Credit Head of Account *</Label>
+                    <Select
+                      value={form.watch("crExpenseHeadId")?.toString()}
+                      onValueChange={(value) => form.setValue("crExpenseHeadId", parseInt(value))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select credit account" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {expenseHeadsLoading ? (
+                          <SelectItem value="loading" disabled>Loading...</SelectItem>
+                        ) : (
+                          expenseHeads.map((head: any) => (
+                            <SelectItem key={head.id} value={head.id.toString()}>
+                              {head.head_name}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    {form.formState.errors.crExpenseHeadId && (
+                      <p className="text-sm text-destructive">{form.formState.errors.crExpenseHeadId.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="crAmount">Credit Amount *</Label>
+                    <Input
+                      id="crAmount"
+                      type="number"
+                      step="0.01"
+                      {...form.register("crAmount", { valueAsNumber: true })}
+                      placeholder="0.00"
+                      className="bg-white"
+                    />
+                    {form.formState.errors.crAmount && (
+                      <p className="text-sm text-destructive">{form.formState.errors.crAmount.message}</p>
+                    )}
+                  </div>
+                </div>
               </div>
 
-              {/* Confirm Checkbox */}
+              <div className="border rounded-lg p-4 bg-gray-50">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="billNo">Bill/Reference No</Label>
+                    <Input
+                      id="billNo"
+                      {...form.register("billNo")}
+                      placeholder="Enter bill or reference number"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="date">Date *</Label>
+                    <Input
+                      id="date"
+                      type="date"
+                      {...form.register("date")}
+                    />
+                    {form.formState.errors.date && (
+                      <p className="text-sm text-destructive">{form.formState.errors.date.message}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-2 mt-4">
+                  <Label htmlFor="description">Description/Notes</Label>
+                  <Textarea
+                    id="description"
+                    {...form.register("description")}
+                    placeholder="Enter journal entry description or narration"
+                    rows={3}
+                  />
+                </div>
+              </div>
+
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
@@ -279,21 +345,23 @@ export default function JournalVoucherPage() {
                   className="h-4 w-4 rounded border-gray-300"
                 />
                 <Label htmlFor="isConfirmed" className="cursor-pointer">
-                  Confirm? (Mark as verified)
+                  Confirm & Finalize
                 </Label>
               </div>
 
-              {/* Form Actions */}
               <div className="flex justify-end gap-2">
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => closeDialog(DIALOG_ID)}
+                  onClick={() => {
+                    form.reset()
+                    closeDialog(DIALOG_ID)
+                  }}
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={createVoucher.isPending}>
-                  {createVoucher.isPending ? "Saving..." : "Insert"}
+                <Button type="submit" disabled={createVoucher.isPending || !isBalanced}>
+                  {createVoucher.isPending ? "Creating..." : "Create Journal Entry"}
                 </Button>
               </div>
             </form>
@@ -301,7 +369,6 @@ export default function JournalVoucherPage() {
         </Dialog>
       </div>
 
-      {/* Filters */}
       <Card>
         <CardHeader>
           <CardTitle>Filters</CardTitle>
@@ -333,7 +400,7 @@ export default function JournalVoucherPage() {
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="search"
-                  placeholder="Search by voucher no, project, etc..."
+                  placeholder="Search by voucher no, project, bill no..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-8"
@@ -344,12 +411,11 @@ export default function JournalVoucherPage() {
         </CardContent>
       </Card>
 
-      {/* Vouchers Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Credit Vouchers</CardTitle>
+          <CardTitle>Journal Vouchers</CardTitle>
           <CardDescription>
-            View and manage all credit vouchers ({filteredVouchers.length} records)
+            All journal entries with double-entry bookkeeping ({filteredVouchers.length} records)
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -365,13 +431,13 @@ export default function JournalVoucherPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>SL No.</TableHead>
-                    <TableHead>Project Name</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Head of Account</TableHead>
-                    <TableHead>Bill No</TableHead>
                     <TableHead>Voucher No</TableHead>
-                    <TableHead>Made of Payment</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Project</TableHead>
+                    <TableHead>Bill No</TableHead>
+                    <TableHead className="text-right">Debit Amount</TableHead>
+                    <TableHead className="text-right">Credit Amount</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -379,21 +445,27 @@ export default function JournalVoucherPage() {
                   {filteredVouchers.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
-                        No credit vouchers found. Create your first voucher to get started.
+                        No journal vouchers found. Create your first journal entry to get started.
                       </TableCell>
                     </TableRow>
                   ) : (
                     filteredVouchers.map((voucher, index) => (
                       <TableRow key={voucher.id}>
                         <TableCell>{index + 1}</TableCell>
-                        <TableCell>{voucher.project_name}</TableCell>
-                        <TableCell>{new Date(voucher.date).toLocaleDateString()}</TableCell>
-                        <TableCell>{voucher.expense_head_name}</TableCell>
-                        <TableCell>{voucher.bill_no || "-"}</TableCell>
                         <TableCell className="font-medium">{voucher.voucher_no}</TableCell>
-                        <TableCell>{voucher.bank_cash_name}</TableCell>
-                        <TableCell className="text-right font-medium">
-                          ৳{Number(voucher.amount).toLocaleString("en-BD", { minimumFractionDigits: 2 })}
+                        <TableCell>{new Date(voucher.date).toLocaleDateString()}</TableCell>
+                        <TableCell>{voucher.project_name}</TableCell>
+                        <TableCell>{voucher.bill_no || "-"}</TableCell>
+                        <TableCell className="text-right font-medium text-blue-600">
+                          {Number(voucher.amount).toLocaleString("en-BD", { minimumFractionDigits: 2 })}
+                        </TableCell>
+                        <TableCell className="text-right font-medium text-green-600">
+                          {Number(voucher.amount).toLocaleString("en-BD", { minimumFractionDigits: 2 })}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={voucher.is_confirmed ? "default" : "secondary"}>
+                            {voucher.is_confirmed ? "Confirmed" : "Pending"}
+                          </Badge>
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">

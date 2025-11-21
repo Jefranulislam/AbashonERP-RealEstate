@@ -23,11 +23,15 @@ export async function GET(request: NextRequest) {
           v.*,
           p.project_name,
           ieh.head_name as expense_head_name,
-          bc.account_title as bank_cash_name
+          bc.account_title as bank_cash_name,
+          dr_bc.account_title as dr_bank_cash_name,
+          cr_bc.account_title as cr_bank_cash_name
         FROM vouchers v
         LEFT JOIN projects p ON v.project_id = p.id
         LEFT JOIN income_expense_heads ieh ON v.expense_head_id = ieh.id
         LEFT JOIN bank_cash_accounts bc ON v.bank_cash_id = bc.id
+        LEFT JOIN bank_cash_accounts dr_bc ON v.dr_bank_cash_id = dr_bc.id
+        LEFT JOIN bank_cash_accounts cr_bc ON v.cr_bank_cash_id = cr_bc.id
         WHERE v.project_id = ${projectId}
           AND v.voucher_type = ${voucherType}
         ORDER BY v.date DESC, v.created_at DESC
@@ -38,11 +42,15 @@ export async function GET(request: NextRequest) {
           v.*,
           p.project_name,
           ieh.head_name as expense_head_name,
-          bc.account_title as bank_cash_name
+          bc.account_title as bank_cash_name,
+          dr_bc.account_title as dr_bank_cash_name,
+          cr_bc.account_title as cr_bank_cash_name
         FROM vouchers v
         LEFT JOIN projects p ON v.project_id = p.id
         LEFT JOIN income_expense_heads ieh ON v.expense_head_id = ieh.id
         LEFT JOIN bank_cash_accounts bc ON v.bank_cash_id = bc.id
+        LEFT JOIN bank_cash_accounts dr_bc ON v.dr_bank_cash_id = dr_bc.id
+        LEFT JOIN bank_cash_accounts cr_bc ON v.cr_bank_cash_id = cr_bc.id
         WHERE v.project_id = ${projectId}
         ORDER BY v.date DESC, v.created_at DESC
       `
@@ -52,11 +60,15 @@ export async function GET(request: NextRequest) {
           v.*,
           p.project_name,
           ieh.head_name as expense_head_name,
-          bc.account_title as bank_cash_name
+          bc.account_title as bank_cash_name,
+          dr_bc.account_title as dr_bank_cash_name,
+          cr_bc.account_title as cr_bank_cash_name
         FROM vouchers v
         LEFT JOIN projects p ON v.project_id = p.id
         LEFT JOIN income_expense_heads ieh ON v.expense_head_id = ieh.id
         LEFT JOIN bank_cash_accounts bc ON v.bank_cash_id = bc.id
+        LEFT JOIN bank_cash_accounts dr_bc ON v.dr_bank_cash_id = dr_bc.id
+        LEFT JOIN bank_cash_accounts cr_bc ON v.cr_bank_cash_id = cr_bc.id
         WHERE v.voucher_type = ${voucherType}
         ORDER BY v.date DESC, v.created_at DESC
       `
@@ -66,11 +78,15 @@ export async function GET(request: NextRequest) {
           v.*,
           p.project_name,
           ieh.head_name as expense_head_name,
-          bc.account_title as bank_cash_name
+          bc.account_title as bank_cash_name,
+          dr_bc.account_title as dr_bank_cash_name,
+          cr_bc.account_title as cr_bank_cash_name
         FROM vouchers v
         LEFT JOIN projects p ON v.project_id = p.id
         LEFT JOIN income_expense_heads ieh ON v.expense_head_id = ieh.id
         LEFT JOIN bank_cash_accounts bc ON v.bank_cash_id = bc.id
+        LEFT JOIN bank_cash_accounts dr_bc ON v.dr_bank_cash_id = dr_bc.id
+        LEFT JOIN bank_cash_accounts cr_bc ON v.cr_bank_cash_id = cr_bc.id
         ORDER BY v.date DESC, v.created_at DESC
       `
     }
@@ -106,6 +122,24 @@ export async function POST(request: NextRequest) {
             : "CV"
     const voucherNo = `${prefix}${String(count).padStart(6, "0")}`
 
+    // Handle Contra vouchers differently (they have dr_bank_cash_id and cr_bank_cash_id)
+    if (data.voucherType === "Contra") {
+      const result = await sql`
+        INSERT INTO vouchers (
+          voucher_no, voucher_type, project_id, dr_bank_cash_id, cr_bank_cash_id,
+          date, amount, description, cheque_number, is_confirmed
+        ) VALUES (
+          ${voucherNo}, ${data.voucherType}, ${data.projectId}, ${data.drBankCashId},
+          ${data.crBankCashId}, ${data.date}, ${data.amount}, ${data.description},
+          ${data.chequeNumber}, ${data.isConfirmed}
+        )
+        RETURNING *
+      `
+      
+      return NextResponse.json({ success: true, voucher: result[0] })
+    }
+
+    // Regular vouchers (Credit, Debit, Journal)
     const result = await sql`
       INSERT INTO vouchers (
         voucher_no, voucher_type, project_id, expense_head_id, bank_cash_id,

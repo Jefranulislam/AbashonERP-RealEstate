@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -18,12 +18,14 @@ import {
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Plus, Edit, Trash2 } from "lucide-react"
-import axios from "axios"
-import { toast } from "sonner"
+import { 
+  useProjectLocations, 
+  useCreateProjectLocation, 
+  useUpdateProjectLocation, 
+  useDeleteProjectLocation 
+} from "@/lib/hooks/use-projects"
 
 export default function ProjectLocationsPage() {
-  const [locations, setLocations] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [selectedLocation, setSelectedLocation] = useState<any>(null)
   const [formData, setFormData] = useState({
@@ -31,40 +33,28 @@ export default function ProjectLocationsPage() {
     isActive: true,
   })
 
-  const fetchLocations = async () => {
-    try {
-      const response = await axios.get("/api/projects/locations")
-      console.log("[v0] Locations fetched:", response.data)
-      setLocations(response.data.locations || [])
-    } catch (error) {
-      console.error("[v0] Error fetching locations:", error)
-      toast.error("Failed to fetch locations")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchLocations()
-  }, [])
+  // React Query hooks
+  const { data: locations = [], isLoading: loading } = useProjectLocations()
+  const createLocation = useCreateProjectLocation()
+  const updateLocation = useUpdateProjectLocation()
+  const deleteLocation = useDeleteProjectLocation()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     try {
       if (selectedLocation) {
-        await axios.put(`/api/projects/locations/${selectedLocation.id}`, formData)
-        toast.success("Location updated successfully")
+        await updateLocation.mutateAsync({
+          id: selectedLocation.id,
+          data: formData,
+        })
       } else {
-        await axios.post("/api/projects/locations", formData)
-        toast.success("Location added successfully")
+        await createLocation.mutateAsync(formData)
       }
-      fetchLocations()
       setDialogOpen(false)
       resetForm()
     } catch (error) {
-      console.error("[v0] Error saving location:", error)
-      toast.error("Failed to save location")
+      // Error handling is done in the mutation hooks
     }
   }
 
@@ -72,12 +62,9 @@ export default function ProjectLocationsPage() {
     if (!confirm("Are you sure you want to delete this location?")) return
 
     try {
-      await axios.delete(`/api/projects/locations/${id}`)
-      toast.success("Location deleted successfully")
-      fetchLocations()
+      await deleteLocation.mutateAsync(id)
     } catch (error) {
-      console.error("[v0] Error deleting location:", error)
-      toast.error("Failed to delete location")
+      // Error handling is done in the mutation hook
     }
   }
 
