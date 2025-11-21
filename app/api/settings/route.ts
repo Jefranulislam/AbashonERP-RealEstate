@@ -19,3 +19,78 @@ export async function GET() {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
+
+export async function POST(request: Request) {
+  try {
+    const user = await getCurrentUser()
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const body = await request.json()
+    const {
+      company_name,
+      invoice_prefix,
+      address,
+      payment_methods,
+      lead_status,
+      lead_source,
+      print_on_company_pad,
+    } = body
+
+    // Check if settings exist
+    const existingSettings = await sql`
+      SELECT id FROM settings ORDER BY id DESC LIMIT 1
+    `
+
+    let result
+    if (existingSettings.length > 0) {
+      // Update existing settings
+      result = await sql`
+        UPDATE settings
+        SET
+          company_name = ${company_name},
+          invoice_prefix = ${invoice_prefix},
+          address = ${address},
+          payment_methods = ${payment_methods},
+          lead_status = ${lead_status},
+          lead_source = ${lead_source},
+          print_on_company_pad = ${print_on_company_pad === 'Yes' || print_on_company_pad === true},
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = ${existingSettings[0].id}
+        RETURNING *
+      `
+    } else {
+      // Insert new settings
+      result = await sql`
+        INSERT INTO settings (
+          company_name,
+          invoice_prefix,
+          address,
+          payment_methods,
+          lead_status,
+          lead_source,
+          print_on_company_pad
+        )
+        VALUES (
+          ${company_name},
+          ${invoice_prefix},
+          ${address},
+          ${payment_methods},
+          ${lead_status},
+          ${lead_source},
+          ${print_on_company_pad === 'Yes' || print_on_company_pad === true}
+        )
+        RETURNING *
+      `
+    }
+
+    return NextResponse.json({
+      success: true,
+      settings: result[0],
+    })
+  } catch (error) {
+    console.error("[v0] Error saving settings:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
+}
