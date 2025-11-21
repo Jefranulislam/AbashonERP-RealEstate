@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -18,9 +18,43 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Loader2 } from "lucide-react"
+import axios from "axios"
 
 export default function PurchaseReportsPage() {
   const [reportType, setReportType] = useState("all")
+  const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState({
+    totalPurchases: 0,
+    pendingRequisitions: 0,
+    approvedOrders: 0,
+  })
+
+  const fetchStats = async () => {
+    try {
+      setLoading(true)
+      const response = await axios.get("/api/purchase/requisitions")
+      const requisitions = response.data.requisitions
+
+      const pending = requisitions.filter((req: any) => !req.is_confirmed).length
+      const approved = requisitions.filter((req: any) => req.is_confirmed).length
+      const total = requisitions.reduce((sum: number, req: any) => sum + Number(req.total_amount || 0), 0)
+
+      setStats({
+        totalPurchases: total,
+        pendingRequisitions: pending,
+        approvedOrders: approved,
+      })
+    } catch (error) {
+      console.error("[v0] Error fetching stats:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchStats()
+  }, [])
 
   return (
     <div className="p-6">
@@ -79,8 +113,16 @@ export default function PurchaseReportsPage() {
               <CardTitle>Total Purchases</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-blue-600">৳ 0.00</div>
-              <p className="text-sm text-muted-foreground mt-1">This period</p>
+              {loading ? (
+                <Loader2 className="h-8 w-8 animate-spin" />
+              ) : (
+                <>
+                  <div className="text-3xl font-bold text-blue-600">
+                    ৳ {stats.totalPurchases.toLocaleString()}
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">All time</p>
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -89,8 +131,14 @@ export default function PurchaseReportsPage() {
               <CardTitle>Pending Requisitions</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-yellow-600">0</div>
-              <p className="text-sm text-muted-foreground mt-1">Awaiting approval</p>
+              {loading ? (
+                <Loader2 className="h-8 w-8 animate-spin" />
+              ) : (
+                <>
+                  <div className="text-3xl font-bold text-yellow-600">{stats.pendingRequisitions}</div>
+                  <p className="text-sm text-muted-foreground mt-1">Awaiting approval</p>
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -99,8 +147,14 @@ export default function PurchaseReportsPage() {
               <CardTitle>Approved Orders</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-green-600">0</div>
-              <p className="text-sm text-muted-foreground mt-1">This period</p>
+              {loading ? (
+                <Loader2 className="h-8 w-8 animate-spin" />
+              ) : (
+                <>
+                  <div className="text-3xl font-bold text-green-600">{stats.approvedOrders}</div>
+                  <p className="text-sm text-muted-foreground mt-1">Confirmed</p>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>

@@ -6,6 +6,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
   Card,
   CardContent,
   CardDescription,
@@ -24,6 +31,8 @@ interface Settings {
   lead_status: string
   lead_source: string
   print_on_company_pad: string
+  currency_code: string
+  currency_symbol: string
 }
 
 export default function SettingsPage() {
@@ -38,6 +47,8 @@ export default function SettingsPage() {
     lead_status: "",
     lead_source: "",
     print_on_company_pad: "No",
+    currency_code: "BDT",
+    currency_symbol: "৳",
   })
 
   // Load existing settings
@@ -60,6 +71,8 @@ export default function SettingsPage() {
           lead_status: data.settings.lead_status || "",
           lead_source: data.settings.lead_source || "",
           print_on_company_pad: data.settings.print_on_company_pad ? "Yes" : "No",
+          currency_code: data.settings.currency_code || "BDT",
+          currency_symbol: data.settings.currency_symbol || "৳",
         })
       }
     } catch (error) {
@@ -194,6 +207,34 @@ export default function SettingsPage() {
                 value={settings.print_on_company_pad}
                 onChange={(e) => handleInputChange("print_on_company_pad", e.target.value)}
               />
+            </div>
+            <div>
+              <Label>Currency</Label>
+              <Select
+                value={settings.currency_code}
+                onValueChange={(value) => {
+                  const currencies: { [key: string]: string } = {
+                    BDT: "৳",
+                    USD: "$",
+                    EUR: "€",
+                    GBP: "£",
+                    INR: "₹",
+                  }
+                  handleInputChange("currency_code", value)
+                  handleInputChange("currency_symbol", currencies[value] || "৳")
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select currency" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="BDT">BDT - Bangladesh Taka (৳)</SelectItem>
+                  <SelectItem value="USD">USD - US Dollar ($)</SelectItem>
+                  <SelectItem value="EUR">EUR - Euro (€)</SelectItem>
+                  <SelectItem value="GBP">GBP - British Pound (£)</SelectItem>
+                  <SelectItem value="INR">INR - Indian Rupee (₹)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <div className="mt-4">

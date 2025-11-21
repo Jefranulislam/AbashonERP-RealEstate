@@ -61,3 +61,33 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
+
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const user = await getCurrentUser()
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const { id } = await params
+    const data = await request.json()
+
+    const result = await sql`
+      UPDATE purchase_requisitions
+      SET 
+        is_confirmed = ${data.is_confirmed},
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${id}
+      RETURNING *
+    `
+
+    if (result.length === 0) {
+      return NextResponse.json({ error: "Requisition not found" }, { status: 404 })
+    }
+
+    return NextResponse.json({ success: true, requisition: result[0] })
+  } catch (error) {
+    console.error("[v0] Error updating requisition:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
+}

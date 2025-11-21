@@ -36,6 +36,8 @@ export async function POST(request: Request) {
       lead_status,
       lead_source,
       print_on_company_pad,
+      currency_code,
+      currency_symbol,
     } = body
 
     // Check if settings exist
@@ -56,6 +58,8 @@ export async function POST(request: Request) {
           lead_status = ${lead_status},
           lead_source = ${lead_source},
           print_on_company_pad = ${print_on_company_pad === 'Yes' || print_on_company_pad === true},
+          currency_code = ${currency_code || 'BDT'},
+          currency_symbol = ${currency_symbol || '৳'},
           updated_at = CURRENT_TIMESTAMP
         WHERE id = ${existingSettings[0].id}
         RETURNING *
@@ -70,7 +74,9 @@ export async function POST(request: Request) {
           payment_methods,
           lead_status,
           lead_source,
-          print_on_company_pad
+          print_on_company_pad,
+          currency_code,
+          currency_symbol
         )
         VALUES (
           ${company_name},
@@ -79,7 +85,9 @@ export async function POST(request: Request) {
           ${payment_methods},
           ${lead_status},
           ${lead_source},
-          ${print_on_company_pad === 'Yes' || print_on_company_pad === true}
+          ${print_on_company_pad === 'Yes' || print_on_company_pad === true},
+          ${currency_code || 'BDT'},
+          ${currency_symbol || '৳'}
         )
         RETURNING *
       `

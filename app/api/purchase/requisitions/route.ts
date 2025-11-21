@@ -12,27 +12,33 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const search = searchParams.get("search")
 
-    let query = `
-      SELECT 
-        pr.*,
-        p.project_name,
-        e.name as employee_name
-      FROM purchase_requisitions pr
-      LEFT JOIN projects p ON pr.project_id = p.id
-      LEFT JOIN employees e ON pr.employee_id = e.id
-      WHERE 1=1
-    `
-
-    const params: any[] = []
+    let requisitions
 
     if (search) {
-      query += ` AND (pr.mpr_no ILIKE $${params.length + 1} OR p.project_name ILIKE $${params.length + 1})`
-      params.push(`%${search}%`)
+      requisitions = await sql`
+        SELECT 
+          pr.*,
+          p.project_name,
+          e.name as employee_name
+        FROM purchase_requisitions pr
+        LEFT JOIN projects p ON pr.project_id = p.id
+        LEFT JOIN employees e ON pr.employee_id = e.id
+        WHERE pr.mpr_no ILIKE ${`%${search}%`} 
+           OR p.project_name ILIKE ${`%${search}%`}
+        ORDER BY pr.created_at DESC
+      `
+    } else {
+      requisitions = await sql`
+        SELECT 
+          pr.*,
+          p.project_name,
+          e.name as employee_name
+        FROM purchase_requisitions pr
+        LEFT JOIN projects p ON pr.project_id = p.id
+        LEFT JOIN employees e ON pr.employee_id = e.id
+        ORDER BY pr.created_at DESC
+      `
     }
-
-    query += ` ORDER BY pr.created_at DESC`
-
-    const requisitions = await sql(query, params)
 
     return NextResponse.json({ requisitions })
   } catch (error) {
