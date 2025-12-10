@@ -16,11 +16,12 @@ export async function GET(request: NextRequest) {
 
     let constructors
 
-    if (search) {
+    // Only search if there's an actual search term (not null, not empty string)
+    if (search && search.trim() !== '' && search !== 'null') {
       constructors = await sql`
         SELECT * FROM constructors
         WHERE is_active = true
-          AND (constructor_name ILIKE ${'%' + search + '%'} OR phone ILIKE ${'%' + search + '%'})
+          AND (constructor_name ILIKE ${`%${search}%`} OR phone ILIKE ${`%${search}%`})
         ORDER BY created_at DESC
       `
     } else {

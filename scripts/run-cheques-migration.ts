@@ -18,7 +18,7 @@ async function runMigration() {
     for (const statement of statements) {
       if (statement.trim()) {
         console.log('Executing:', statement.substring(0, 100) + '...')
-        await sql(statement)
+        await sql(statement) 
       }
     }
     
