@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useQuery } from "@tanstack/react-query"
 import axios from "axios"
 import { Download, FileText, FileSpreadsheet, Printer } from "lucide-react"
@@ -28,14 +28,16 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
+import { LedgerReportPDF } from "@/components/pdf/ledger-report-pdf"
+import { printDocument, getCompanySettings } from "@/lib/pdf-utils"
 
 export default function LedgerPage() {
   const { toast } = useToast()
-  const [selectedExpenseHead, setSelectedExpenseHead] = useState<string>("")
-  const [fromDate, setFromDate] = useState<string>("")
-  const [toDate, setToDate] = useState<string>("")
-
-  // Fetch expense heads
+  const [selectedExpenseHead, setSelectedExpenseHead] = useState<string>("") 
+  const [fromDate, setFromDate] = useState<string>("")  
+  const [toDate, setToDate] = useState<string>("")  
+  const [printDialogOpen, setPrintDialogOpen] = useState(false)
+  const [companySettings, setCompanySettings] = useState<any>(null)  // Fetch expense heads
   const { data: expenseHeads = [], isLoading: expenseHeadsLoading } = useQuery({
     queryKey: ["expense-heads"],
     queryFn: async () => {
@@ -128,6 +130,16 @@ export default function LedgerPage() {
     })
   }
 
+  // Load company settings for PDF
+  useEffect(() => {
+    loadCompanySettings()
+  }, [])
+
+  const loadCompanySettings = async () => {
+    const settings = await getCompanySettings()
+    setCompanySettings(settings)
+  }
+
   // Print ledger
   const printLedger = () => {
     if (!ledgerData || !ledgerData.entries.length) {
@@ -139,13 +151,11 @@ export default function LedgerPage() {
       return
     }
 
-    const printWindow = window.open("", "_blank")
-    if (!printWindow) return
-
-    const htmlContent = generatePDFContent()
-    printWindow.document.write(htmlContent)
-    printWindow.document.close()
-    
+    setPrintDialogOpen(true)
+    setTimeout(() => {
+      printDocument('print-ledger-content')
+    }, 100)
+  }
     setTimeout(() => {
       printWindow.print()
     }, 250)
@@ -641,6 +651,25 @@ export default function LedgerPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Hidden Print Content */}
+      <div className="hidden">
+        {printDialogOpen && ledgerData && ledgerData.entries.length > 0 && companySettings && (
+          <div id="print-ledger-content">
+            <LedgerReportPDF
+              expenseHead={ledgerData.expenseHead}
+              entries={ledgerData.entries}
+              fromDate={fromDate || new Date().toISOString().split('T')[0]}
+              toDate={toDate || new Date().toISOString().split('T')[0]}
+              openingBalance={ledgerData.openingBalance || 0}
+              closingBalance={ledgerData.closingBalance}
+              companyName={companySettings.company_name}
+              companyAddress={companySettings.address}
+              currencySymbol={companySettings.currency_symbol}
+            />
+          </div>
+        )}
+      </div>
     </div>
   )
 }
