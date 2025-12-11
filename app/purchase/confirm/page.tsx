@@ -20,7 +20,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
-import { Search, Eye, CheckCircle, XCircle, Loader2 } from "lucide-react"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Search, Eye, CheckCircle, XCircle, Loader2, Info } from "lucide-react"
 import axios from "axios"
 import { formatDistanceToNow } from "date-fns"
 
@@ -96,6 +97,21 @@ export default function PurchaseConfirmPage() {
 
   return (
     <div className="p-6">
+      <Alert className="mb-6">
+        <Info className="h-4 w-4" />
+        <AlertTitle>Purchase Workflow - Step 2: Confirm Requisitions</AlertTitle>
+        <AlertDescription>
+          <ol className="list-decimal list-inside space-y-1 mt-2">
+            <li><strong>Step 1:</strong> Requisition created by employee (needs approval)</li>
+            <li><strong>Step 2 (Current):</strong> Review and confirm/reject requisitions</li>
+            <li><strong>Step 3:</strong> Create Purchase Order from confirmed requisitions</li>
+            <li><strong>Step 4:</strong> Record Material Deliveries against PO</li>
+            <li><strong>Step 5:</strong> Process Payment Transactions</li>
+            <li><strong>Step 6:</strong> View comprehensive Purchase Reports</li>
+          </ol>
+        </AlertDescription>
+      </Alert>
+
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Confirm Purchase Requisitions</h1>
       </div>
