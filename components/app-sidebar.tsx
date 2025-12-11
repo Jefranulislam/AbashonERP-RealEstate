@@ -83,6 +83,10 @@ const menuItems = [
     items: [
       { title: "Requisitions", url: "/purchase/requisitions" },
       { title: "Confirm Requisition", url: "/purchase/confirm" },
+      { title: "Purchase Orders", url: "/purchase/orders" },
+      { title: "Material Deliveries", url: "/purchase/deliveries" },
+      { title: "Payment Transactions", url: "/purchase/payments" },
+      { title: "Payment Due Report", url: "/purchase/payment-due-report" },
       { title: "Purchase Reports", url: "/purchase/reports" },
     ],
   },
