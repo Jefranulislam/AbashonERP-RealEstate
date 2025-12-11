@@ -1,8 +1,10 @@
 ﻿"use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useQuery } from "@tanstack/react-query"
 import axios from "axios"
+import { TrialBalancePDF } from "@/components/pdf/trial-balance-pdf"
+import { printDocument, getCompanySettings } from "@/lib/pdf-utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -22,6 +24,17 @@ export default function TrialBalancePage() {
     toDate: new Date().toISOString().split("T")[0],
     projectId: ""
   })
+  const [printDialogOpen, setPrintDialogOpen] = useState(false)
+  const [companySettings, setCompanySettings] = useState<any>(null)
+
+  useEffect(() => {
+    loadCompanySettings()
+  }, [])
+
+  const loadCompanySettings = async () => {
+    const settings = await getCompanySettings()
+    setCompanySettings(settings)
+  }
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
@@ -96,7 +109,15 @@ export default function TrialBalancePage() {
   }
 
   const handlePrint = () => {
-    window.print()
+    if (!trialBalance) {
+      toast({ title: "No data", description: "Please generate the report first", variant: "destructive" })
+      return
+    }
+    setPrintDialogOpen(true)
+    setTimeout(() => {
+      printDocument('print-trial-balance-content')
+      setPrintDialogOpen(false)
+    }, 100)
   }
 
   return (
@@ -248,6 +269,24 @@ export default function TrialBalancePage() {
             <p className="text-sm text-muted-foreground mb-4">Select dates and click "Generate" to view your trial balance</p>
           </CardContent>
         </Card>
+      )}
+
+      {/* Hidden Print Content */}
+      {printDialogOpen && trialBalance && companySettings && (
+        <div className="hidden">
+          <div id="print-trial-balance-content">
+            <TrialBalancePDF
+              accounts={trialBalance.accounts}
+              totals={trialBalance.totals}
+              fromDate={trialBalance.fromDate}
+              toDate={trialBalance.toDate}
+              projectName={trialBalance.projectName}
+              companyName={companySettings.company_name}
+              companyAddress={companySettings.address}
+              currencySymbol={companySettings.currency_symbol}
+            />
+          </div>
+        </div>
       )}
     </div>
   )

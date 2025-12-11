@@ -1,8 +1,10 @@
 ﻿"use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useQuery } from "@tanstack/react-query"
 import axios from "axios"
+import { BalanceSheetPDF } from "@/components/pdf/balance-sheet-pdf"
+import { printDocument, getCompanySettings } from "@/lib/pdf-utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,6 +16,17 @@ import { Skeleton } from "@/components/ui/skeleton"
 export default function BalanceSheetPage() {
   const { toast } = useToast()
   const [asOnDate, setAsOnDate] = useState(new Date().toISOString().split("T")[0])
+  const [printDialogOpen, setPrintDialogOpen] = useState(false)
+  const [companySettings, setCompanySettings] = useState<any>(null)
+
+  useEffect(() => {
+    loadCompanySettings()
+  }, [])
+
+  const loadCompanySettings = async () => {
+    const settings = await getCompanySettings()
+    setCompanySettings(settings)
+  }
 
   const { data: balanceSheet, isLoading, refetch } = useQuery({
     queryKey: ["balance-sheet", asOnDate],
@@ -44,7 +57,14 @@ export default function BalanceSheetPage() {
           <p className="text-sm text-muted-foreground mt-1">Statement of financial position showing assets, liabilities, and equity</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" disabled={!balanceSheet}><Printer className="h-4 w-4 mr-2" />Print</Button>
+          <Button variant="outline" size="sm" disabled={!balanceSheet} onClick={() => {
+            if (!balanceSheet) return
+            setPrintDialogOpen(true)
+            setTimeout(() => {
+              printDocument('print-balance-sheet-content')
+              setPrintDialogOpen(false)
+            }, 100)
+          }}><Printer className="h-4 w-4 mr-2" />Print</Button>
           <Button variant="outline" size="sm" disabled={!balanceSheet}><Download className="h-4 w-4 mr-2" />Export</Button>
         </div>
       </div>
@@ -315,6 +335,26 @@ export default function BalanceSheetPage() {
             <p className="text-sm text-muted-foreground mb-4">Select a date and click "Generate Balance Sheet" to view your financial position</p>
           </CardContent>
         </Card>
+      )}
+
+      {/* Hidden Print Content */}
+      {printDialogOpen && balanceSheet && companySettings && (
+        <div className="hidden">
+          <div id="print-balance-sheet-content">
+            <BalanceSheetPDF
+              currentAssets={balanceSheet.currentAssets}
+              fixedAssets={balanceSheet.fixedAssets}
+              currentLiabilities={balanceSheet.currentLiabilities}
+              longTermLiabilities={balanceSheet.longTermLiabilities}
+              equity={balanceSheet.equity}
+              totals={balanceSheet.totals}
+              asOnDate={balanceSheet.asOnDate}
+              companyName={companySettings.company_name}
+              companyAddress={companySettings.address}
+              currencySymbol={companySettings.currency_symbol}
+            />
+          </div>
+        </div>
       )}
     </div>
   )

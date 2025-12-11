@@ -1,8 +1,10 @@
 ﻿"use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useQuery } from "@tanstack/react-query"
 import axios from "axios"
+import { ProfitLossPDF } from "@/components/pdf/profit-loss-pdf"
+import { printDocument, getCompanySettings } from "@/lib/pdf-utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -20,6 +22,17 @@ export default function ProfitLossPage() {
     toDate: new Date().toISOString().split("T")[0],
     projectId: ""
   })
+  const [printDialogOpen, setPrintDialogOpen] = useState(false)
+  const [companySettings, setCompanySettings] = useState<any>(null)
+
+  useEffect(() => {
+    loadCompanySettings()
+  }, [])
+
+  const loadCompanySettings = async () => {
+    const settings = await getCompanySettings()
+    setCompanySettings(settings)
+  }
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
@@ -73,6 +86,18 @@ export default function ProfitLossPage() {
     link.click()
     document.body.removeChild(link)
     toast({ title: "Export successful", description: "Profit & loss statement exported to Excel format" })
+  }
+
+  const handlePrint = () => {
+    if (!profitLoss) {
+      toast({ title: "No data", description: "Please generate the report first", variant: "destructive" })
+      return
+    }
+    setPrintDialogOpen(true)
+    setTimeout(() => {
+      printDocument('print-profit-loss-content')
+      setPrintDialogOpen(false)
+    }, 100)
   }
 
   const generateCSV = (data: any) => {
@@ -291,6 +316,25 @@ export default function ProfitLossPage() {
             <p className="text-sm text-muted-foreground mb-4">Select dates and click "Generate" to view your profit & loss statement</p>
           </CardContent>
         </Card>
+      )}
+
+      {/* Hidden Print Content */}
+      {printDialogOpen && profitLoss && companySettings && (
+        <div className="hidden">
+          <div id="print-profit-loss-content">
+            <ProfitLossPDF
+              revenue={profitLoss.income}
+              expenses={profitLoss.expenses}
+              totals={profitLoss.totals}
+              fromDate={profitLoss.fromDate}
+              toDate={profitLoss.toDate}
+              projectName={profitLoss.projectName}
+              companyName={companySettings.company_name}
+              companyAddress={companySettings.address}
+              currencySymbol={companySettings.currency_symbol}
+            />
+          </div>
+        </div>
       )}
     </div>
   )
