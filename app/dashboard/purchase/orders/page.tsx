@@ -19,6 +19,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Plus, Search, Trash2, Eye, Edit, FileText } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Info } from "lucide-react"
 import axios from "axios"
 
 interface POItem {
@@ -303,6 +305,20 @@ export default function PurchaseOrdersPage() {
 
   return (
     <div className="p-6">
+      <Alert className="mb-6">
+        <Info className="h-4 w-4" />
+        <AlertTitle>How to Use Purchase Orders</AlertTitle>
+        <AlertDescription>
+          <ol className="list-decimal list-inside space-y-1 mt-2">
+            <li>Create PO from approved requisitions or create new manually</li>
+            <li>Add material items with specifications, quantities, and rates</li>
+            <li>Set payment schedules (Advance, Partial, On Delivery, etc.)</li>
+            <li>Track order status: Pending → Approved → Partially Delivered → Completed</li>
+            <li>View complete PO details including payment schedules and delivery status</li>
+          </ol>
+        </AlertDescription>
+      </Alert>
+
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Purchase Orders</h1>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

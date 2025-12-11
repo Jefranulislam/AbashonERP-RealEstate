@@ -20,6 +20,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Plus, Search, Trash2, Eye, X, Printer } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Info } from "lucide-react"
 import axios from "axios"
 import { PurchaseRequisitionPDF } from "@/components/pdf/purchase-requisition-pdf"
 import { printDocument, getCompanySettings } from "@/lib/pdf-utils"
