@@ -156,10 +156,6 @@ export default function LedgerPage() {
       printDocument('print-ledger-content')
     }, 100)
   }
-    setTimeout(() => {
-      printWindow.print()
-    }, 250)
-  }
 
   const generateCSV = () => {
     if (!ledgerData) return ""

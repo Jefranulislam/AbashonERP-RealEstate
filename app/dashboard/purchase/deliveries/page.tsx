@@ -77,9 +77,9 @@ export default function MaterialDeliveriesPage() {
         axios.get("/api/employees"),
       ])
 
-      setPurchaseOrders(posRes.data.orders)
-      setProjects(projectsRes.data.projects)
-      setEmployees(employeesRes.data.employees)
+      setPurchaseOrders(posRes.data.orders || [])
+      setProjects(projectsRes.data.projects || [])
+      setEmployees(employeesRes.data.employees || [])
     } catch (error) {
       console.error("Error fetching data:", error)
     }

@@ -86,11 +86,11 @@ export default function PaymentTransactionsPage() {
         axios.get("/api/finance/bank-cash"),
       ])
 
-      setPurchaseOrders(posRes.data.orders)
-      setVendors(vendorsRes.data.vendors)
-      setProjects(projectsRes.data.projects)
-      setEmployees(employeesRes.data.employees)
-      setBankAccounts(bankAccountsRes.data.accounts)
+      setPurchaseOrders(posRes.data.orders || [])
+      setVendors(vendorsRes.data.vendors || [])
+      setProjects(projectsRes.data.projects || [])
+      setEmployees(employeesRes.data.employees || [])
+      setBankAccounts(bankAccountsRes.data.accounts || [])
     } catch (error) {
       console.error("Error fetching data:", error)
     }

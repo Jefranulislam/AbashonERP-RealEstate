@@ -30,9 +30,15 @@ export default function PaymentDueReportPage() {
       // Process orders to extract pending payment schedules
       const allPendingPayments: any[] = []
       
-      for (const order of response.data.orders) {
-        // Fetch detailed order info including payment schedules
-        const detailResponse = await axios.get(`/api/purchase/orders/${order.id}`)
+      // Fetch all order details in parallel for better performance
+      const orderDetailsPromises = response.data.orders.map((order: any) => 
+        axios.get(`/api/purchase/orders/${order.id}`).catch(err => ({ data: null, error: err }))
+      )
+      const orderDetailsResponses = await Promise.all(orderDetailsPromises)
+      
+      for (let i = 0; i < orderDetailsResponses.length; i++) {
+        const detailResponse = orderDetailsResponses[i]
+        if (!detailResponse.data) continue
         const orderDetail = detailResponse.data
         
         if (orderDetail.payment_schedules) {

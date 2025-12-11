@@ -117,11 +117,11 @@ export default function PurchaseOrdersPage() {
         axios.get("/api/purchase/requisitions"),
       ])
 
-      setVendors(vendorsRes.data.vendors)
-      setProjects(projectsRes.data.projects)
-      setEmployees(employeesRes.data.employees)
-      setExpenseHeads(expenseHeadsRes.data.expenseHeads)
-      setRequisitions(requisitionsRes.data.requisitions)
+      setVendors(vendorsRes.data.vendors || [])
+      setProjects(projectsRes.data.projects || [])
+      setEmployees(employeesRes.data.employees || [])
+      setExpenseHeads(expenseHeadsRes.data.expenseHeads || [])
+      setRequisitions(requisitionsRes.data.requisitions || [])
     } catch (error) {
       console.error("Error fetching data:", error)
     }
