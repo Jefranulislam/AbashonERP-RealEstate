@@ -81,8 +81,8 @@ const menuItems = [
     title: "Purchase",
     icon: ShoppingCart,
     items: [
-      { title: "Requisitions", url: "/dashboard/purchase/requisitions" },
-      { title: "Confirm Requisition", url: "/dashboard/purchase/confirm" },
+      { title: "Requisitions", url: "/purchase/requisitions" },
+      { title: "Confirm Requisition", url: "/purchase/confirm" },
       { title: "Purchase Orders", url: "/dashboard/purchase/orders" },
       { title: "Material Deliveries", url: "/dashboard/purchase/deliveries" },
       { title: "Payment Transactions", url: "/dashboard/purchase/payments" },
