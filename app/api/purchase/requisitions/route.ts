@@ -55,6 +55,16 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await request.json()
+    console.log("[API] Received requisition data:", data)
+
+    // Validate required fields
+    if (!data.projectId || !data.employeeId) {
+      return NextResponse.json({ error: "Project and Employee are required" }, { status: 400 })
+    }
+
+    if (!data.items || data.items.length === 0) {
+      return NextResponse.json({ error: "At least one item is required" }, { status: 400 })
+    }
 
     // Generate MPR NO
     const mprResult = await sql`SELECT COUNT(*) as count FROM purchase_requisitions`
@@ -62,7 +72,9 @@ export async function POST(request: NextRequest) {
     const mprNo = `MPR${String(count).padStart(6, "0")}`
 
     // Calculate total amount
-    const totalAmount = data.items.reduce((sum: number, item: any) => sum + Number(item.totalPrice), 0)
+    const totalAmount = data.items.reduce((sum: number, item: any) => sum + Number(item.totalPrice || 0), 0)
+
+    console.log("[API] Inserting requisition:", { mprNo, totalAmount })
 
     // Insert requisition
     const result = await sql`
@@ -70,30 +82,59 @@ export async function POST(request: NextRequest) {
         mpr_no, project_id, employee_id, purpose_description, requisition_date,
         required_date, comments, contact_person, nb, remark, total_amount, is_confirmed
       ) VALUES (
-        ${mprNo}, ${data.projectId}, ${data.employeeId}, ${data.purposeDescription},
-        ${data.requisitionDate}, ${data.requiredDate}, ${data.comments},
-        ${data.contactPerson}, ${data.nb}, ${data.remark}, ${totalAmount}, false
+        ${mprNo}, 
+        ${data.projectId}, 
+        ${data.employeeId}, 
+        ${data.purposeDescription || null},
+        ${data.requisitionDate}, 
+        ${data.requiredDate || null}, 
+        ${data.comments || null},
+        ${data.contactPerson || null}, 
+        ${data.nb || null}, 
+        ${data.remark || null}, 
+        ${totalAmount}, 
+        false
       )
       RETURNING *
     `
 
     const requisitionId = result[0].id
+    console.log("[API] Created requisition ID:", requisitionId)
 
     // Insert items
     for (const item of data.items) {
+      if (!item.expenseHeadId || !item.qty || !item.rate) {
+        console.warn("[API] Skipping invalid item:", item)
+        continue
+      }
+
       await sql`
         INSERT INTO purchase_requisition_items (
           requisition_id, expense_head_id, description, qty, rate, total_price
         ) VALUES (
-          ${requisitionId}, ${item.expenseHeadId}, ${item.description},
-          ${item.qty}, ${item.rate}, ${item.totalPrice}
+          ${requisitionId}, 
+          ${item.expenseHeadId}, 
+          ${item.description || null},
+          ${item.qty}, 
+          ${item.rate}, 
+          ${item.totalPrice || (Number(item.qty) * Number(item.rate))}
         )
       `
     }
 
+    console.log("[API] Requisition created successfully")
     return NextResponse.json({ success: true, requisition: result[0] })
-  } catch (error) {
+  } catch (error: any) {
     console.error("[v0] Error creating requisition:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    console.error("[v0] Error details:", {
+      message: error.message,
+      code: error.code,
+      detail: error.detail,
+      stack: error.stack
+    })
+    return NextResponse.json({ 
+      error: "Internal server error", 
+      details: error.message 
+    }, { status: 500 })
   }
 }
