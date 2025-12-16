@@ -110,7 +110,7 @@ const menuItems = [
     icon: Wallet,
     items: [
       { title: "Income/Expense Types", url: "/dashboard/finance/types" },
-      { title: "Income/Expense Heads", url: "/dashboard/finance/heads" },
+      { title: "Expense Heads / Groups", url: "/dashboard/finance/expense-heads" },
       { title: "Bank & Cash", url: "/dashboard/finance/bank-cash" },
       { title: "Initial Balances", url: "/dashboard/finance/initial-balances" },
     ],

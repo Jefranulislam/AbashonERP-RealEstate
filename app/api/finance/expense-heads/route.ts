@@ -14,17 +14,33 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    // Get all expense heads with hierarchy information
     const expenseHeads = await sql`
       SELECT 
         ieh.*,
-        iet.name as type_name
+        iet.name as type_name,
+        parent.head_name as parent_name,
+        COALESCE(ieh.full_path, ieh.head_name) as full_path,
+        COALESCE(ieh.level, 0) as level
       FROM income_expense_heads ieh
       LEFT JOIN income_expense_types iet ON ieh.inc_exp_type_id = iet.id
+      LEFT JOIN income_expense_heads parent ON ieh.parent_id = parent.id
       WHERE ieh.is_active = true
-      ORDER BY ieh.head_name ASC
+      ORDER BY 
+        COALESCE(ieh.full_path, ieh.head_name) ASC,
+        ieh.head_name ASC
     `
 
-    return NextResponse.json({ expenseHeads })
+    // Also get hierarchical view for easier display
+    const hierarchicalView = await sql`
+      SELECT * FROM v_expense_heads_hierarchy
+      ORDER BY sort_path
+    `
+
+    return NextResponse.json({ 
+      expenseHeads,
+      hierarchicalView 
+    })
   } catch (error) {
     console.error("[v0] Error fetching expense heads:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
@@ -42,17 +58,32 @@ export async function POST(request: NextRequest) {
     }
 
     const incExpTypeId = data.incExpTypeId || null
-  // The `income_expense_heads` table does not include a `description` column
-  // according to the schema. Accept the value from the client but do not store
-  // it to avoid SQL errors. If you want to persist descriptions, add a column
-  // via a migration and then store it here.
-  const description = data.description || null
+    const parentId = data.parentId || null
+    const isGroup = data.isGroup === true
+    const type = data.type || 'Dr'
+    const unit = data.unit || null
     const isActive = data.isActive === undefined ? true : !!data.isActive
 
     const res = await sql`
-      INSERT INTO income_expense_heads (head_name, inc_exp_type_id, is_active)
-      VALUES (${data.headName}, ${incExpTypeId}, ${isActive})
-      RETURNING id, head_name, inc_exp_type_id, is_active, created_at
+      INSERT INTO income_expense_heads (
+        head_name, 
+        inc_exp_type_id, 
+        parent_id,
+        is_group,
+        type,
+        unit,
+        is_active
+      )
+      VALUES (
+        ${data.headName}, 
+        ${incExpTypeId}, 
+        ${parentId},
+        ${isGroup},
+        ${type},
+        ${unit},
+        ${isActive}
+      )
+      RETURNING id, head_name, inc_exp_type_id, parent_id, is_group, level, full_path, type, unit, is_active, created_at
     `
 
     return NextResponse.json({ head: res[0] })
