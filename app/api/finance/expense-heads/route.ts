@@ -15,13 +15,24 @@ export async function GET() {
     }
 
     // Get all expense heads with hierarchy information
+    // Handle case where columns might not exist yet
     const expenseHeads = await sql`
       SELECT 
-        ieh.*,
+        ieh.id,
+        ieh.head_name,
+        ieh.unit,
+        ieh.inc_exp_type_id,
+        ieh.type,
+        ieh.is_stock,
+        ieh.is_active,
+        ieh.created_at,
+        ieh.updated_at,
         iet.name as type_name,
-        parent.head_name as parent_name,
-        COALESCE(ieh.full_path, ieh.head_name) as full_path,
-        COALESCE(ieh.level, 0) as level
+        COALESCE(ieh.parent_id, NULL) as parent_id,
+        COALESCE(parent.head_name, NULL) as parent_name,
+        COALESCE(ieh.is_group, false) as is_group,
+        COALESCE(ieh.level, 0) as level,
+        COALESCE(ieh.full_path, ieh.head_name) as full_path
       FROM income_expense_heads ieh
       LEFT JOIN income_expense_types iet ON ieh.inc_exp_type_id = iet.id
       LEFT JOIN income_expense_heads parent ON ieh.parent_id = parent.id
@@ -31,15 +42,8 @@ export async function GET() {
         ieh.head_name ASC
     `
 
-    // Also get hierarchical view for easier display
-    const hierarchicalView = await sql`
-      SELECT * FROM v_expense_heads_hierarchy
-      ORDER BY sort_path
-    `
-
     return NextResponse.json({ 
-      expenseHeads,
-      hierarchicalView 
+      expenseHeads
     })
   } catch (error) {
     console.error("[v0] Error fetching expense heads:", error)

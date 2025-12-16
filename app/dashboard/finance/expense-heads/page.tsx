@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -20,14 +21,6 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -36,7 +29,6 @@ import {
 } from "@/components/ui/select"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { Checkbox } from "@/components/ui/checkbox"
 import { 
   Plus, 
   Search, 
@@ -66,34 +58,20 @@ interface ExpenseHead {
 }
 
 export default function ExpenseHeadsPage() {
+  const router = useRouter()
   const [expenseHeads, setExpenseHeads] = useState<ExpenseHead[]>([])
   const [filteredHeads, setFilteredHeads] = useState<ExpenseHead[]>([])
-  const [expenseTypes, setExpenseTypes] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [filterLevel, setFilterLevel] = useState("all")
-  const [dialogOpen, setDialogOpen] = useState(false)
-  
-  const [formData, setFormData] = useState({
-    headName: "",
-    parentId: "",
-    isGroup: false,
-    type: "Dr",
-    unit: "",
-    incExpTypeId: ""
-  })
 
   const fetchData = async () => {
     try {
       setLoading(true)
-      const [headsRes, typesRes] = await Promise.all([
-        axios.get("/api/finance/expense-heads"),
-        axios.get("/api/initial-expense-heads")
-      ])
+      const headsRes = await axios.get("/api/finance/expense-heads")
       
       setExpenseHeads(headsRes.data.expenseHeads || [])
       setFilteredHeads(headsRes.data.expenseHeads || [])
-      setExpenseTypes(typesRes.data.expenseTypes || [])
     } catch (error) {
       console.error("Error fetching data:", error)
     } finally {
@@ -124,36 +102,6 @@ export default function ExpenseHeadsPage() {
     setFilteredHeads(filtered)
   }, [search, filterLevel, expenseHeads])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    try {
-      await axios.post("/api/finance/expense-heads", {
-        headName: formData.headName,
-        parentId: formData.parentId || null,
-        isGroup: formData.isGroup,
-        type: formData.type,
-        unit: formData.unit || null,
-        incExpTypeId: formData.incExpTypeId || null
-      })
-
-      alert("Account head created successfully!")
-      setDialogOpen(false)
-      setFormData({
-        headName: "",
-        parentId: "",
-        isGroup: false,
-        type: "Dr",
-        unit: "",
-        incExpTypeId: ""
-      })
-      fetchData()
-    } catch (error) {
-      console.error("Error creating account head:", error)
-      alert("Failed to create account head")
-    }
-  }
-
   const getIcon = (head: ExpenseHead) => {
     if (head.is_group) {
       return <Folder className="h-4 w-4 text-yellow-600" />
@@ -164,9 +112,6 @@ export default function ExpenseHeadsPage() {
   const getIndentation = (level: number) => {
     return `${level * 24}px`
   }
-
-  // Get only parent groups for the parent selector
-  const parentGroups = expenseHeads.filter(h => h.is_group)
 
   return (
     <div className="p-6">
@@ -185,133 +130,10 @@ export default function ExpenseHeadsPage() {
 
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Expense Heads & Account Groups</h1>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              New Account Head
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Create Account Head / Ledger Group</DialogTitle>
-              <DialogDescription>
-                Create a new account group or ledger account. Groups can contain sub-accounts.
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="flex items-center space-x-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <Checkbox
-                  id="isGroup"
-                  checked={formData.isGroup}
-                  onCheckedChange={(checked) => 
-                    setFormData({ ...formData, isGroup: checked as boolean })
-                  }
-                />
-                <div className="flex-1">
-                  <Label htmlFor="isGroup" className="text-sm font-medium cursor-pointer">
-                    This is a Group/Category (not a ledger account)
-                  </Label>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Check this if creating a parent group that will contain sub-accounts
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Account Head Name *</Label>
-                  <Input
-                    placeholder={formData.isGroup ? "e.g., Construction Material" : "e.g., Steel"}
-                    value={formData.headName}
-                    onChange={(e) => setFormData({ ...formData, headName: e.target.value })}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label>Parent Group</Label>
-                  <Select
-                    value={formData.parentId}
-                    onValueChange={(value) => setFormData({ ...formData, parentId: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="None (Top Level)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">None (Top Level)</SelectItem>
-                      {parentGroups.map((group) => (
-                        <SelectItem key={group.id} value={group.id.toString()}>
-                          {group.full_path || group.head_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Select a parent group to nest this account
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <Label>Type *</Label>
-                  <Select
-                    value={formData.type}
-                    onValueChange={(value) => setFormData({ ...formData, type: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Dr">Debit (Dr)</SelectItem>
-                      <SelectItem value="Cr">Credit (Cr)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label>Unit of Measurement</Label>
-                  <Input
-                    placeholder={formData.isGroup ? "Leave empty for groups" : "e.g., TON, CFT, BAG"}
-                    value={formData.unit}
-                    onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                    disabled={formData.isGroup}
-                  />
-                </div>
-
-                <div>
-                  <Label>Expense Type</Label>
-                  <Select
-                    value={formData.incExpTypeId}
-                    onValueChange={(value) => setFormData({ ...formData, incExpTypeId: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">None</SelectItem>
-                      {expenseTypes.map((type) => (
-                        <SelectItem key={type.id} value={type.id.toString()}>
-                          {type.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-4">
-                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit">
-                  Create {formData.isGroup ? "Group" : "Account"}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <Button onClick={() => router.push("/dashboard/finance/expense-heads/new")}>
+          <Plus className="mr-2 h-4 w-4" />
+          New Account Head
+        </Button>
       </div>
 
       {/* Filters */}
