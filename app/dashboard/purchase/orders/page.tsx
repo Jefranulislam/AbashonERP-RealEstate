@@ -119,11 +119,27 @@ export default function PurchaseOrdersPage() {
         axios.get("/api/purchase/requisitions"),
       ])
 
-      setVendors(vendorsRes.data.vendors || [])
-      setProjects(projectsRes.data.projects || [])
-      setEmployees(employeesRes.data.employees || [])
-      setExpenseHeads(expenseHeadsRes.data.expenseHeads || [])
-      setRequisitions(requisitionsRes.data.requisitions || [])
+      console.log("Fetched vendors:", vendorsRes.data)
+      console.log("Fetched projects:", projectsRes.data)
+      console.log("Fetched expense heads:", expenseHeadsRes.data)
+      console.log("Fetched requisitions:", requisitionsRes.data)
+
+      const vendorsList = Array.isArray(vendorsRes.data) ? vendorsRes.data : vendorsRes.data.vendors || []
+      const projectsList = Array.isArray(projectsRes.data) ? projectsRes.data : projectsRes.data.projects || []
+      const employeesList = Array.isArray(employeesRes.data) ? employeesRes.data : employeesRes.data.employees || []
+      const expenseHeadsList = Array.isArray(expenseHeadsRes.data) ? expenseHeadsRes.data : expenseHeadsRes.data.expenseHeads || []
+      const requisitionsList = Array.isArray(requisitionsRes.data) ? requisitionsRes.data : requisitionsRes.data.requisitions || []
+
+      console.log("Processed vendors:", vendorsList.length, vendorsList[0])
+      console.log("Processed projects:", projectsList.length, projectsList[0])
+      console.log("Processed expense heads:", expenseHeadsList.length, expenseHeadsList[0])
+      console.log("Processed requisitions:", requisitionsList.length, requisitionsList[0])
+
+      setVendors(vendorsList)
+      setProjects(projectsList)
+      setEmployees(employeesList)
+      setExpenseHeads(expenseHeadsList)
+      setRequisitions(requisitionsList)
     } catch (error) {
       console.error("Error fetching data:", error)
     }
@@ -349,7 +365,7 @@ export default function PurchaseOrdersPage() {
                     <SelectContent>
                       {vendors.map((vendor) => (
                         <SelectItem key={vendor.id} value={vendor.id.toString()}>
-                          {vendor.name}
+                          {vendor.vendor_name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -368,7 +384,7 @@ export default function PurchaseOrdersPage() {
                     <SelectContent>
                       {projects.map((project) => (
                         <SelectItem key={project.id} value={project.id.toString()}>
-                          {project.name}
+                          {project.project_name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -386,7 +402,7 @@ export default function PurchaseOrdersPage() {
                     <SelectContent>
                       {requisitions.map((req) => (
                         <SelectItem key={req.id} value={req.id.toString()}>
-                          {req.requisition_number}
+                          {req.mpr_no}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -500,7 +516,7 @@ export default function PurchaseOrdersPage() {
                               <SelectContent>
                                 {expenseHeads.map((head) => (
                                   <SelectItem key={head.id} value={head.id.toString()}>
-                                    {head.name}
+                                    {head.head_name}
                                   </SelectItem>
                                 ))}
                               </SelectContent>

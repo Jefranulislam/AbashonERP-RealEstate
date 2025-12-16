@@ -146,8 +146,8 @@ export function AppSidebar() {
               {menuItems.map((item) => (
                 <React.Fragment key={item.title}>
                   {item.items ? (
-                    <Collapsible asChild defaultOpen={false} className="group/collapsible">
-                      <SidebarMenuItem>
+                    <Collapsible asChild defaultOpen={false} className="group/collapsible" suppressHydrationWarning>
+                      <SidebarMenuItem suppressHydrationWarning>
                         <CollapsibleTrigger asChild>
                           <SidebarMenuButton tooltip={item.title}>
                             {item.icon && <item.icon />}
@@ -155,7 +155,7 @@ export function AppSidebar() {
                             <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                           </SidebarMenuButton>
                         </CollapsibleTrigger>
-                        <CollapsibleContent>
+                        <CollapsibleContent suppressHydrationWarning>
                           <SidebarMenuSub>
                             {item.items.map((subItem) => (
                               <SidebarMenuSubItem key={subItem.title}>

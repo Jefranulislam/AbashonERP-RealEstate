@@ -40,6 +40,23 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
 
     const id = Number.parseInt(params.id)
 
+    // Check for foreign key constraints
+    const assignedCheck = await sql`SELECT COUNT(*) as count FROM assigned_constructors WHERE constructor_id = ${id}`
+    const advanceCheck = await sql`SELECT COUNT(*) as count FROM advance_payables WHERE constructor_id = ${id}`
+    
+    const assignedCount = Number(assignedCheck[0]?.count || 0)
+    const advanceCount = Number(advanceCheck[0]?.count || 0)
+    
+    if (assignedCount > 0 || advanceCount > 0) {
+      return NextResponse.json({ 
+        error: "Cannot delete constructor. It has related records.",
+        details: {
+          assignedConstructors: assignedCount,
+          advancePayables: advanceCount
+        }
+      }, { status: 400 })
+    }
+
     await sql`DELETE FROM constructors WHERE id = ${id}`
 
     return NextResponse.json({ success: true })
