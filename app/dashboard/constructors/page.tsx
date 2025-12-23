@@ -19,8 +19,16 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Plus, Search, Edit, Trash2 } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Badge } from "@/components/ui/badge"
 import axios from "axios"
 import { toast } from "sonner"
+
+const WORK_TYPES = [
+  "Civil Construction", "Electrical", "Plumbing", "Roofing", "Flooring", "Painting",
+  "Carpentry", "Masonry", "Steel Fabrication", "HVAC", "Landscaping", "Interior Design",
+  "Waterproofing", "Demolition", "Foundation", "Other"
+]
 
 export default function ConstructorsPage() {
   const [constructors, setConstructors] = useState<any[]>([])
@@ -35,6 +43,13 @@ export default function ConstructorsPage() {
     phone: "",
     email: "",
     description: "",
+    bankName: "",
+    bankAccountNumber: "",
+    bankAccountName: "",
+    bankBranch: "",
+    bankRoutingNumber: "",
+    bankSwiftCode: "",
+    workTypes: [] as string[],
     isActive: true,
   })
 
@@ -99,9 +114,25 @@ export default function ConstructorsPage() {
       phone: "",
       email: "",
       description: "",
+      bankName: "",
+      bankAccountNumber: "",
+      bankAccountName: "",
+      bankBranch: "",
+      bankRoutingNumber: "",
+      bankSwiftCode: "",
+      workTypes: [],
       isActive: true,
     })
     setSelectedConstructor(null)
+  }
+
+  const toggleWorkType = (workType: string) => {
+    setFormData(prev => ({
+      ...prev,
+      workTypes: prev.workTypes.includes(workType)
+        ? prev.workTypes.filter(w => w !== workType)
+        : [...prev.workTypes, workType]
+    }))
   }
 
   const openEditDialog = (constructor: any) => {
@@ -113,6 +144,13 @@ export default function ConstructorsPage() {
       phone: constructor.phone || "",
       email: constructor.email || "",
       description: constructor.description || "",
+      bankName: constructor.bank_name || "",
+      bankAccountNumber: constructor.bank_account_number || "",
+      bankAccountName: constructor.bank_account_name || "",
+      bankBranch: constructor.bank_branch || "",
+      bankRoutingNumber: constructor.bank_routing_number || "",
+      bankSwiftCode: constructor.bank_swift_code || "",
+      workTypes: constructor.work_types || [],
       isActive: constructor.is_active,
     })
     setDialogOpen(true)
@@ -132,72 +170,151 @@ export default function ConstructorsPage() {
               Add Constructor
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{selectedConstructor ? "Edit Constructor" : "Add New Constructor"}</DialogTitle>
               <DialogDescription>Fill in the constructor information below</DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Basic Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Basic Information</h3>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="constructorName">Constructor Name *</Label>
+                    <Input
+                      id="constructorName"
+                      value={formData.constructorName}
+                      onChange={(e) => setFormData({ ...formData, constructorName: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Phone</Label>
+                    <Input
+                      id="phone"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="website">Website</Label>
+                    <Input
+                      id="website"
+                      value={formData.website}
+                      onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                    />
+                  </div>
+                </div>
                 <div className="space-y-2">
-                  <Label htmlFor="constructorName">Constructor Name *</Label>
-                  <Input
-                    id="constructorName"
-                    value={formData.constructorName}
-                    onChange={(e) => setFormData({ ...formData, constructorName: e.target.value })}
-                    required
+                  <Label htmlFor="mailingAddress">Mailing Address</Label>
+                  <Textarea
+                    id="mailingAddress"
+                    value={formData.mailingAddress}
+                    onChange={(e) => setFormData({ ...formData, mailingAddress: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Phone</Label>
-                  <Input
-                    id="phone"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="website">Website</Label>
-                  <Input
-                    id="website"
-                    value={formData.website}
-                    onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="isActive">Active</Label>
+                  <Switch
+                    id="isActive"
+                    checked={formData.isActive}
+                    onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })}
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="mailingAddress">Mailing Address</Label>
-                <Textarea
-                  id="mailingAddress"
-                  value={formData.mailingAddress}
-                  onChange={(e) => setFormData({ ...formData, mailingAddress: e.target.value })}
-                />
+
+              {/* Work Types */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Work Types</h3>
+                <div className="grid grid-cols-4 gap-4">
+                  {WORK_TYPES.map((workType) => (
+                    <div key={workType} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={workType}
+                        checked={formData.workTypes.includes(workType)}
+                        onCheckedChange={() => toggleWorkType(workType)}
+                      />
+                      <label htmlFor={workType} className="text-sm cursor-pointer">
+                        {workType}
+                      </label>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                />
+
+              {/* Bank Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Bank Information</h3>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="bankName">Bank Name</Label>
+                    <Input
+                      id="bankName"
+                      value={formData.bankName}
+                      onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="bankAccountNumber">Account Number</Label>
+                    <Input
+                      id="bankAccountNumber"
+                      value={formData.bankAccountNumber}
+                      onChange={(e) => setFormData({ ...formData, bankAccountNumber: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="bankAccountName">Account Name</Label>
+                    <Input
+                      id="bankAccountName"
+                      value={formData.bankAccountName}
+                      onChange={(e) => setFormData({ ...formData, bankAccountName: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="bankBranch">Branch</Label>
+                    <Input
+                      id="bankBranch"
+                      value={formData.bankBranch}
+                      onChange={(e) => setFormData({ ...formData, bankBranch: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="bankRoutingNumber">Routing Number</Label>
+                    <Input
+                      id="bankRoutingNumber"
+                      value={formData.bankRoutingNumber}
+                      onChange={(e) => setFormData({ ...formData, bankRoutingNumber: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="bankSwiftCode">SWIFT Code</Label>
+                    <Input
+                      id="bankSwiftCode"
+                      value={formData.bankSwiftCode}
+                      onChange={(e) => setFormData({ ...formData, bankSwiftCode: e.target.value })}
+                    />
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center justify-between">
-                <Label htmlFor="isActive">Active</Label>
-                <Switch
-                  id="isActive"
-                  checked={formData.isActive}
-                  onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })}
-                />
-              </div>
+
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                   Cancel
