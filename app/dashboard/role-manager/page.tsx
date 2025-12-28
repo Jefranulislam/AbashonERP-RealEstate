@@ -64,11 +64,16 @@ export default function RoleManagerPage() {
     try {
       const response = await axios.get("/api/roles")
       setRoles(response.data.roles)
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching roles:", error)
+      
+      const errorMessage = error.response?.data?.message || 
+                          error.response?.data?.hint || 
+                          "Failed to fetch roles"
+      
       toast({
         title: "Error",
-        description: "Failed to fetch roles",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {

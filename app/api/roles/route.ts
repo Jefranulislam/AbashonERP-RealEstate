@@ -29,9 +29,22 @@ export async function GET() {
     `
 
     return NextResponse.json({ roles })
-  } catch (error) {
+  } catch (error: any) {
     console.error("[API] Error fetching roles:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    
+    // Check if the error is due to missing tables
+    if (error.message?.includes('relation "roles" does not exist')) {
+      return NextResponse.json({ 
+        error: "RBAC tables not initialized",
+        message: "Please run the RBAC migration: npm run migrate:rbac",
+        hint: "The roles table does not exist. Run the migration script to create RBAC tables."
+      }, { status: 503 })
+    }
+    
+    return NextResponse.json({ 
+      error: "Internal server error",
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    }, { status: 500 })
   }
 }
 
