@@ -349,7 +349,16 @@ export default function RoleManagerPage() {
       </div>
 
       <Card>
-        <CardHrbacNotInitialized ? (
+        <CardHeader>
+          <CardTitle>Roles</CardTitle>
+          <CardDescription>
+            List of all roles in the system
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="text-center py-8">Loading...</div>
+          ) : rbacNotInitialized ? (
             <div className="text-center py-12">
               <Shield className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-semibold mb-2">RBAC System Not Initialized</h3>
@@ -359,7 +368,7 @@ export default function RoleManagerPage() {
               <p className="text-sm text-muted-foreground">
                 Please run the migration script on your production database:
                 <code className="block mt-2 p-2 bg-muted rounded">
-                  npx tsx scripts/run-rbac-migration.ts
+                  npx tsx scripts/run-rbac-migration-pg.ts
                 </code>
               </p>
             </div>
@@ -367,15 +376,6 @@ export default function RoleManagerPage() {
             <div className="text-center py-8 text-muted-foreground">
               No roles found. Click "Add Role" to create one.
             </div>
-          ) : eader>
-          <CardTitle>Roles</CardTitle>
-          <CardDescription>
-            List of all roles in the system
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="text-center py-8">Loading...</div>
           ) : (
             <Table>
               <TableHeader>
