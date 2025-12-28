@@ -15,14 +15,29 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Plus, Edit, Trash2 } from "lucide-react"
+import { Plus, Edit, Trash2, Shield } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import axios from "axios"
+import { toast } from "@/hooks/use-toast"
+
+interface Role {
+  id: number
+  role_name: string
+  description: string
+}
 
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState<any[]>([])
+  const [roles, setRoles] = useState<Role[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [formData, setFormData] = useState({
@@ -32,6 +47,7 @@ export default function EmployeesPage() {
     position: "",
     department: "",
     address: "",
+    roleId: "",
     isActive: true,
   })
 
@@ -41,25 +57,52 @@ export default function EmployeesPage() {
       setEmployees(response.data.employees)
     } catch (error) {
       console.error("[v0] Error fetching employees:", error)
+      toast({
+        title: "Error",
+        description: "Failed to fetch employees",
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
     }
   }
 
+  const fetchRoles = async () => {
+    try {
+      const response = await axios.get("/api/roles")
+      setRoles(response.data.roles.filter((r: Role) => r.is_active))
+    } catch (error) {
+      console.error("Error fetching roles:", error)
+    }
+  }
+
   useEffect(() => {
     fetchEmployees()
+    fetchRoles()
   }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     try {
-      await axios.post("/api/employees", formData)
+      await axios.post("/api/employees", {
+        ...formData,
+        role_id: formData.roleId ? parseInt(formData.roleId) : null
+      })
       fetchEmployees()
       setDialogOpen(false)
       resetForm()
+      toast({
+        title: "Success",
+        description: "Employee created successfully",
+      })
     } catch (error) {
       console.error("[v0] Error saving employee:", error)
+      toast({
+        title: "Error",
+        description: "Failed to save employee",
+        variant: "destructive",
+      })
     }
   }
 
@@ -71,6 +114,7 @@ export default function EmployeesPage() {
       position: "",
       department: "",
       address: "",
+      roleId: "",
       isActive: true,
     })
   }
@@ -138,6 +182,27 @@ export default function EmployeesPage() {
                     onChange={(e) => setFormData({ ...formData, department: e.target.value })}
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="roleId">Role</Label>
+                  <Select
+                    value={formData.roleId}
+                    onValueChange={(value) => setFormData({ ...formData, roleId: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {roles.map((role) => (
+                        <SelectItem key={role.id} value={role.id.toString()}>
+                          <div className="flex items-center">
+                            <Shield className="mr-2 h-4 w-4" />
+                            {role.role_name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="address">Address</Label>
@@ -177,7 +242,7 @@ export default function EmployeesPage() {
                     <TableHead>Email</TableHead>
                     <TableHead>Position</TableHead>
                     <TableHead>Department</TableHead>
-                    <TableHead>Address</TableHead>
+                    <TableHead>Role</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -198,7 +263,16 @@ export default function EmployeesPage() {
                         <TableCell>{employee.email || "-"}</TableCell>
                         <TableCell>{employee.position || "-"}</TableCell>
                         <TableCell>{employee.department || "-"}</TableCell>
-                        <TableCell>{employee.address || "-"}</TableCell>
+                        <TableCell>
+                          {employee.role_name ? (
+                            <Badge variant="outline" className="gap-1">
+                              <Shield className="h-3 w-3" />
+                              {employee.role_name}
+                            </Badge>
+                          ) : (
+                            "-"
+                          )}
+                        </TableCell>
                         <TableCell>
                           <Badge variant={employee.is_active ? "default" : "secondary"}>
                             {employee.is_active ? "Active" : "Inactive"}

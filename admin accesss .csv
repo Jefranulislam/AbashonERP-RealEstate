@@ -1,0 +1,29 @@
+﻿SL,Module Name,Module Show,Show,Create,Edit,Delete,PDF,Trash Show,Restore,Permanently Delete
+1,User,✓,✓,✗,✗,✗,✗,✗,✗,✗
+2,Role Manager,✓,✓,✗,✗,✗,✗,✗,✗,✗
+3,Settings,✓,✓,✓,✓,✓,✓,✓,✓,✓
+4,Branch,✓,✓,✓,✓,✓,✓,✓,✓,✓
+5,Ledger Type,✗,✗,✗,✗,✗,✗,✗,✗,✗
+6,Ledger Group,✓,✓,✓,✓,✓,✓,✓,✓,✓
+7,Ledger Name,✓,✓,✓,✓,✓,✓,✓,✓,✓
+8,Bank Cash,✓,✓,✓,✓,✓,✓,✓,✓,✓
+9,Initial Income Expense Head Balance,✗,✗,✗,✗,✗,✗,✗,✗,✗
+10,Initial Bank Cash Balance,✗,✗,✗,✗,✗,✗,✗,✗,✗
+11,Dr Voucher,✓,✓,✓,✓,✓,✓,✓,✓,✓
+12,Cr Voucher,✓,✓,✓,✓,✓,✓,✓,✓,✓
+13,Jnl Voucher,✓,✓,✓,✓,✓,✓,✓,✓,✓
+14,Contra Voucher,✓,✓,✓,✓,✓,✓,✓,✓,✓
+15,Ledger,✓,✓,✓,✓,✓,✓,✓,✓,✓
+16,Trial Balance,✓,✓,✓,✓,✓,✓,✓,✓,✓
+17,Cost Of Revenue,✓,✓,✓,✓,✓,✓,✓,✓,✓
+18,Profit Or Loss Account,✓,✓,✓,✓,✓,✓,✓,✓,✓
+19,Retained Earning,✓,✓,✓,✓,✓,✓,✓,✓,✓
+20,Fixed Assets Schedule,✓,✓,✓,✓,✓,✓,✓,✓,✓
+21,Statement Of Financial Position,✓,✓,✓,✓,✓,✓,✓,✓,✓
+22,Cash Flow,✓,✓,✓,✓,✓,✓,✓,✓,✓
+23,Receive And Payment,✓,✓,✓,✓,✓,✓,✓,✓,✓
+24,Notes,✓,✓,✓,✓,✓,✓,✓,✓,✓
+25,General Branch Report,✓,✓,✓,✓,✓,✓,✓,✓,✓
+26,General Ledger Report,✓,✓,✓,✓,✓,✓,✓,✓,✓
+27,General Bank Cash Report,✓,✓,✓,✓,✓,✓,✓,✓,✓
+28,General Voucher Report,✓,✓,✓,✓,✓,✓,✓,✓,✓

@@ -118,7 +118,10 @@ const menuItems = [
   {
     title: "Employees",
     icon: Users,
-    url: "/dashboard/employees",
+    items: [
+      { title: "Employee List", url: "/dashboard/employees" },
+      { title: "Role Manager", url: "/dashboard/role-manager" },
+    ],
   },
   {
     title: "Cheque Manager",

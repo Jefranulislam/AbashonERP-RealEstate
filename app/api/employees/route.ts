@@ -11,9 +11,13 @@ export async function GET() {
 
     console.log("[v0] Fetching employees")
     const employees = await sql`
-      SELECT * FROM employees
-      WHERE is_active = true
-      ORDER BY name ASC
+      SELECT 
+        e.*,
+        r.role_name
+      FROM employees e
+      LEFT JOIN roles r ON r.id = e.role_id AND r.deleted_at IS NULL
+      WHERE e.is_active = true
+      ORDER BY e.name ASC
     `
 
     console.log("[v0] Employees fetched:", employees.length)
@@ -36,7 +40,7 @@ export async function POST(request: NextRequest) {
 
     const result = await sql`
       INSERT INTO employees (
-        name, phone, email, position, department, address, is_active
+        name, phone, email, position, department, address, role_id, is_active
       ) VALUES (
         ${data.name}, 
         ${data.phone || null}, 
@@ -44,6 +48,7 @@ export async function POST(request: NextRequest) {
         ${data.position || null}, 
         ${data.department || null}, 
         ${data.address || null}, 
+        ${data.role_id || null},
         ${data.isActive !== false}
       )
       RETURNING *
