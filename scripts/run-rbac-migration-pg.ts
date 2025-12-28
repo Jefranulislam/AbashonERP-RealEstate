@@ -1,12 +1,10 @@
-import { neon } from "@neondatabase/serverless"
+import { Client } from "pg"
 import * as fs from "fs"
 import * as path from "path"
 import * as dotenv from "dotenv"
 
-// Load environment variables from .env.local
+// Load environment variables
 dotenv.config({ path: ".env.local" })
-
-// Also try .env if .env.local doesn't exist
 if (!process.env.DATABASE_URL) {
   dotenv.config({ path: ".env" })
 }
@@ -15,32 +13,35 @@ if (!process.env.DATABASE_URL) {
   console.error("\n❌ ERROR: DATABASE_URL environment variable is not set")
   console.error("\n📝 Please create a .env.local file in the root directory with:")
   console.error("   DATABASE_URL=your_database_connection_string")
-  console.error("\nExample:")
-  console.error("   DATABASE_URL=postgresql://user:password@host/database")
-  console.error("\n💡 If you're using Neon, get your connection string from:")
-  console.error("   https://console.neon.tech/app/projects\n")
   process.exit(1)
 }
 
-const sql = neon(process.env.DATABASE_URL)
-
 async function runMigration() {
+  const client = new Client({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }
+  })
+
   try {
     console.log("🚀 Starting Role-Based Access Control (RBAC) migration...")
+    console.log("🔗 Connecting to database...")
+    
+    await client.connect()
+    console.log("✅ Connected to database\n")
 
     // Read the SQL migration file
     const migrationPath = path.join(__dirname, "011_add_roles_and_permissions.sql")
     const migrationSQL = fs.readFileSync(migrationPath, "utf8")
 
-    console.log("\n⚙️  Executing RBAC migration...\n")
+    console.log("⚙️  Executing RBAC migration SQL...\n")
     
-    // Use unsafe() for raw SQL execution
-    await (sql as any).unsafe(migrationSQL)
+    // Execute the entire SQL file
+    await client.query(migrationSQL)
     
     console.log("✅ Migration executed successfully!\n")
 
-    console.log("\n✨ RBAC Migration completed successfully!")
-    console.log("\n📊 Summary:")
+    console.log("✨ RBAC Migration completed successfully!\n")
+    console.log("📊 Summary:")
     console.log("  ✓ Roles table created")
     console.log("  ✓ Modules table created")
     console.log("  ✓ Permissions table created")
@@ -60,9 +61,13 @@ async function runMigration() {
     console.log("  ✓ Audit log table created")
     console.log("\n🎉 You can now use the Role Manager at /dashboard/role-manager")
 
-  } catch (error) {
-    console.error("\n❌ Migration failed:", error)
+  } catch (error: any) {
+    console.error("\n❌ Migration failed:", error.message)
+    console.error("\nDetails:", error)
     process.exit(1)
+  } finally {
+    await client.end()
+    console.log("\n✅ Database connection closed")
   }
 }
 
