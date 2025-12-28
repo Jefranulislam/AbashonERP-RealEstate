@@ -3,11 +3,23 @@ import * as fs from "fs"
 import * as path from "path"
 import * as dotenv from "dotenv"
 
-// Load environment variables
+// Load environment variables from .env.local
 dotenv.config({ path: ".env.local" })
 
+// Also try .env if .env.local doesn't exist
 if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL environment variable is not set")
+  dotenv.config({ path: ".env" })
+}
+
+if (!process.env.DATABASE_URL) {
+  console.error("\n❌ ERROR: DATABASE_URL environment variable is not set")
+  console.error("\n📝 Please create a .env.local file in the root directory with:")
+  console.error("   DATABASE_URL=your_database_connection_string")
+  console.error("\nExample:")
+  console.error("   DATABASE_URL=postgresql://user:password@host/database")
+  console.error("\n💡 If you're using Neon, get your connection string from:")
+  console.error("   https://console.neon.tech/app/projects\n")
+  process.exit(1)
 }
 
 const sql = neon(process.env.DATABASE_URL)
