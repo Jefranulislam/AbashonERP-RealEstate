@@ -51,6 +51,7 @@ export default function RoleManagerPage() {
   const [roles, setRoles] = useState<Role[]>([])
   const [modules, setModules] = useState<Module[]>([])
   const [loading, setLoading] = useState(true)
+  const [rbacNotInitialized, setRbacNotInitialized] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [permissionDialogOpen, setPermissionDialogOpen] = useState(false)
   const [selectedRole, setSelectedRole] = useState<Role | null>(null)
@@ -64,6 +65,15 @@ export default function RoleManagerPage() {
     try {
       const response = await axios.get("/api/roles")
       setRoles(response.data.roles)
+      setRbacNotInitialized(response.data.rbacNotInitialized || false)
+      
+      if (response.data.rbacNotInitialized) {
+        toast({
+          title: "RBAC Not Initialized",
+          description: "The role system hasn't been set up yet. Please run the migration script.",
+          variant: "destructive",
+        })
+      }
     } catch (error: any) {
       console.error("Error fetching roles:", error)
       
@@ -339,7 +349,25 @@ export default function RoleManagerPage() {
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHrbacNotInitialized ? (
+            <div className="text-center py-12">
+              <Shield className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">RBAC System Not Initialized</h3>
+              <p className="text-muted-foreground mb-4">
+                The role-based access control system hasn't been set up yet.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Please run the migration script on your production database:
+                <code className="block mt-2 p-2 bg-muted rounded">
+                  npx tsx scripts/run-rbac-migration.ts
+                </code>
+              </p>
+            </div>
+          ) : roles.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No roles found. Click "Add Role" to create one.
+            </div>
+          ) : eader>
           <CardTitle>Roles</CardTitle>
           <CardDescription>
             List of all roles in the system
@@ -399,8 +427,7 @@ export default function RoleManagerPage() {
                         </Button>
                         <Button
                           variant="ghost"
-                          size="sm"
-                          onClick={() => handleEditRole(role)}
+                onClick={() => handleEditRole(role)}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>

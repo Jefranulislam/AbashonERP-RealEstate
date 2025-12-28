@@ -10,25 +10,33 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const roles = await sql`
-      SELECT 
-        r.id,
-        r.role_name,
-        r.description,
-        r.is_active,
-        r.created_at,
-        r.updated_at,
-        COUNT(DISTINCT e.id) as employee_count,
-        COUNT(DISTINCT u.id) as user_count
-      FROM roles r
-      LEFT JOIN employees e ON e.role_id = r.id AND e.is_active = true
-      LEFT JOIN users u ON u.role_id = r.id AND u.deleted_at IS NULL
-      WHERE r.deleted_at IS NULL
-      GROUP BY r.id, r.role_name, r.description, r.is_active, r.created_at, r.updated_at
-      ORDER BY r.role_name ASC
-    `
-
-    return NextResponse.json({ roles })
+    // Check if roles table exists first
+    try {
+      const roles = await sql`
+        SELECT 
+          r.id,
+          r.role_name,
+          r.description,
+          r.is_active,
+          r.created_at,
+          r.updated_at,
+          COUNT(DISTINCT e.id) as employee_count,
+          COUNT(DISTINCT u.id) as user_count
+        FROM roles r
+        LEFT JOIN employees e ON e.role_id = r.id AND e.is_active = true
+        LEFT JOIN users u ON u.role_id = r.id AND u.deleted_at IS NULL
+        WHERE r.deleted_at IS NULL
+        GROUP BY r.id, r.role_name, r.description, r.is_active, r.created_at, r.updated_at
+        ORDER BY r.role_name ASC
+      `
+      return NextResponse.json({ roles })
+    } catch (dbError: any) {
+      if (dbError.message?.includes('does not exist')) {
+        // Return empty array if tables don't exist yet
+        return NextResponse.json({ roles: [], rbacNotInitialized: true })
+      }
+      throw dbError
+    }
   } catch (error: any) {
     console.error("[API] Error fetching roles:", error)
     
@@ -63,13 +71,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Role name is required" }, { status: 400 })
     }
 
-    const result = await sql`
-      INSERT INTO roles (role_name, description, is_active)
-      VALUES (${role_name}, ${description || null}, ${is_active})
-      RETURNING *
-    `
-
-    return NextResponse.json({ success: true, role: result[0] })
+    try {
+      const result = await sql`
+        INSERT INTO roles (role_name, description, is_active)
+        VALUES (${role_name}, ${description || null}, ${is_active})
+        RETURNING *
+      `
+      return NextResponse.json({ success: true, role: result[0] })
+    } catch (dbError: any) {
+      if (dbError.message?.includes('does not exist')) {
+        return NextResponse.json({ 
+          error: "RBAC not initialized",
+          message: "Please run the RBAC migration script"
+        }, { status: 503 })
+      }
+      throw dbError
+    }
   } catch (error: any) {
     console.error("[API] Error creating role:", error)
     
