@@ -28,6 +28,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
+import { formatDateDMY } from "@/lib/utils"
 import { LedgerReportPDF } from "@/components/pdf/ledger-report-pdf"
 import { printDocument, getCompanySettings } from "@/lib/pdf-utils"
 
@@ -171,7 +172,7 @@ export default function LedgerPage() {
 
     ledgerData.entries.forEach((entry: any) => {
       rows.push([
-        new Date(entry.date).toLocaleDateString(),
+        formatDateDMY(entry.date),
         entry.voucherNo,
         entry.particulars,
         entry.debit.toFixed(2),
@@ -294,7 +295,7 @@ export default function LedgerPage() {
           </div>
           <div class="info-row">
             <span class="info-label">Period:</span>
-            <span>${fromDate && toDate ? `${new Date(fromDate).toLocaleDateString()} to ${new Date(toDate).toLocaleDateString()}` : "All Time"}</span>
+            <span>${fromDate && toDate ? `${formatDateDMY(fromDate)} to ${formatDateDMY(toDate)}` : "All Time"}</span>
           </div>
           <div class="info-row">
             <span class="info-label">Opening Balance:</span>
@@ -319,7 +320,7 @@ export default function LedgerPage() {
           <tbody>
             ${ledgerData.entries.map((entry: any) => `
               <tr>
-                <td>${new Date(entry.date).toLocaleDateString()}</td>
+                <td>${formatDateDMY(entry.date)}</td>
                 <td>${entry.voucherNo}</td>
                 <td>${entry.particulars}</td>
                 <td class="text-right">${entry.debit > 0 ? entry.debit.toLocaleString("en-BD", { minimumFractionDigits: 2 }) : '-'}</td>
@@ -489,7 +490,7 @@ export default function LedgerPage() {
                   <CardTitle className="text-xl">{ledgerData.expenseHead.head_name}</CardTitle>
                   <CardDescription className="mt-1">
                     {fromDate && toDate 
-                      ? `${new Date(fromDate).toLocaleDateString()} - ${new Date(toDate).toLocaleDateString()}`
+                      ? `${formatDateDMY(fromDate)} - ${formatDateDMY(toDate)}`
                       : "All Time"
                     }
                   </CardDescription>
@@ -602,7 +603,7 @@ export default function LedgerPage() {
                 <TableBody>
                   {ledgerData.entries.map((entry: any) => (
                     <TableRow key={entry.id}>
-                      <TableCell>{new Date(entry.date).toLocaleDateString()}</TableCell>
+                      <TableCell>{formatDateDMY(entry.date)}</TableCell>
                       <TableCell className="font-medium">
                         <Badge variant="outline">{entry.voucherNo}</Badge>
                       </TableCell>

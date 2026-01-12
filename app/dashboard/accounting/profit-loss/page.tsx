@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useQuery } from "@tanstack/react-query"
 import axios from "axios"
+import { formatDateDMY } from "@/lib/utils"
 import { ProfitLossPDF } from "@/components/pdf/profit-loss-pdf"
 import { printDocument, getCompanySettings } from "@/lib/pdf-utils"
 import { Button } from "@/components/ui/button"
@@ -193,7 +194,7 @@ export default function ProfitLossPage() {
           <Card>
             <CardHeader className="text-center border-b">
               <h2 className="text-2xl font-bold">Profit & Loss Statement</h2>
-              <p className="text-sm text-muted-foreground">For the period: {new Date(profitLoss.fromDate).toLocaleDateString()} to {new Date(profitLoss.toDate).toLocaleDateString()}</p>
+              <p className="text-sm text-muted-foreground">For the period: {formatDateDMY(profitLoss.fromDate)} to {formatDateDMY(profitLoss.toDate)}</p>
               {profitLoss.projectName && <p className="text-sm font-semibold text-primary mt-1">Project: {profitLoss.projectName}</p>}
             </CardHeader>
           </Card>

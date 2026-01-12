@@ -18,7 +18,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
-import { Plus, Search, Edit, Trash2 } from "lucide-react"
+import { Plus, Search, Edit, Trash2, Eye } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import axios from "axios"
@@ -35,6 +35,7 @@ export default function ConstructorsPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [viewDialogOpen, setViewDialogOpen] = useState(false)
   const [selectedConstructor, setSelectedConstructor] = useState<any>(null)
   const [formData, setFormData] = useState({
     constructorName: "",
@@ -154,6 +155,11 @@ export default function ConstructorsPage() {
       isActive: constructor.is_active,
     })
     setDialogOpen(true)
+  }
+
+  const openViewDialog = (constructor: any) => {
+    setSelectedConstructor(constructor)
+    setViewDialogOpen(true)
   }
 
   return (
@@ -377,10 +383,13 @@ export default function ConstructorsPage() {
                       <TableCell>{constructor.email || "-"}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="icon" onClick={() => openEditDialog(constructor)}>
+                          <Button variant="ghost" size="icon" onClick={() => openViewDialog(constructor)} title="View Details">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => openEditDialog(constructor)} title="Edit">
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDelete(constructor.id)}>
+                          <Button variant="ghost" size="icon" onClick={() => handleDelete(constructor.id)} title="Delete">
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -393,6 +402,136 @@ export default function ConstructorsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* View Constructor Dialog */}
+      <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Constructor Details</DialogTitle>
+            <DialogDescription>View constructor information</DialogDescription>
+          </DialogHeader>
+          {selectedConstructor && (
+            <div className="space-y-6">
+              {/* Basic Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold border-b pb-2">Basic Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-muted-foreground">Constructor Name</Label>
+                    <p className="font-medium">{selectedConstructor.constructor_name}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Status</Label>
+                    <div>
+                      <Badge variant={selectedConstructor.is_active ? "default" : "secondary"}>
+                        {selectedConstructor.is_active ? "Active" : "Inactive"}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Phone</Label>
+                    <p className="font-medium">{selectedConstructor.phone || "-"}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Email</Label>
+                    <p className="font-medium">{selectedConstructor.email || "-"}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <Label className="text-muted-foreground">Mailing Address</Label>
+                    <p className="font-medium">{selectedConstructor.mailing_address || "-"}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <Label className="text-muted-foreground">Website</Label>
+                    <p className="font-medium">{selectedConstructor.website || "-"}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <Label className="text-muted-foreground">Description</Label>
+                    <p className="font-medium">{selectedConstructor.description || "-"}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bank Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold border-b pb-2">Bank Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-muted-foreground">Bank Name</Label>
+                    <p className="font-medium">{selectedConstructor.bank_name || "-"}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Account Number</Label>
+                    <p className="font-medium">{selectedConstructor.bank_account_number || "-"}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Account Name</Label>
+                    <p className="font-medium">{selectedConstructor.bank_account_name || "-"}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Branch</Label>
+                    <p className="font-medium">{selectedConstructor.bank_branch || "-"}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Routing Number</Label>
+                    <p className="font-medium">{selectedConstructor.bank_routing_number || "-"}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">SWIFT Code</Label>
+                    <p className="font-medium">{selectedConstructor.bank_swift_code || "-"}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Work Types */}
+              {selectedConstructor.work_types && selectedConstructor.work_types.length > 0 && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold border-b pb-2">Work Types</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedConstructor.work_types.map((workType: string) => (
+                      <Badge key={workType} variant="outline">
+                        {workType}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Timestamps */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold border-b pb-2">Additional Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-muted-foreground">Created At</Label>
+                    <p className="font-medium">
+                      {new Date(selectedConstructor.created_at).toLocaleString()}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Last Updated</Label>
+                    <p className="font-medium">
+                      {new Date(selectedConstructor.updated_at).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setViewDialogOpen(false)
+                    openEditDialog(selectedConstructor)
+                  }}
+                >
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit Constructor
+                </Button>
+                <Button onClick={() => setViewDialogOpen(false)}>Close</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

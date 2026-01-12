@@ -21,8 +21,10 @@ import { Textarea } from "@/components/ui/textarea"
 import { Plus, Edit, Trash2 } from "lucide-react"
 import axios from "axios"
 import { Badge } from "@/components/ui/badge"
+import { useToast } from "@/hooks/use-toast"
 
 export default function ProjectsPage() {
+  const { toast } = useToast()
   const [projects, setProjects] = useState<any[]>([])
   const [locations, setLocations] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -72,25 +74,52 @@ export default function ProjectsPage() {
     try {
       if (selectedProject) {
         await axios.put(`/api/projects/${selectedProject.id}`, formData)
+        toast({
+          title: "Success",
+          description: "Project updated successfully",
+        })
       } else {
         await axios.post("/api/projects", formData)
+        toast({
+          title: "Success",
+          description: "Project created successfully",
+        })
       }
       fetchProjects()
       setDialogOpen(false)
       resetForm()
     } catch (error) {
       console.error("[v0] Error saving project:", error)
+      toast({
+        title: "Error",
+        description: "Failed to save project",
+        variant: "destructive",
+      })
     }
   }
 
   const handleDelete = async (id: number) => {
     if (!confirm("Are you sure you want to delete this project?")) return
 
+    toast({
+      title: "Deleting...",
+      description: "Please wait while we delete the project",
+    })
+
     try {
       await axios.delete(`/api/projects/${id}`)
+      toast({
+        title: "Success",
+        description: "Project deleted successfully",
+      })
       fetchProjects()
     } catch (error) {
       console.error("[v0] Error deleting project:", error)
+      toast({
+        title: "Error",
+        description: "Failed to delete project",
+        variant: "destructive",
+      })
     }
   }
 

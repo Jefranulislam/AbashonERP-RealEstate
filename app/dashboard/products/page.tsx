@@ -21,9 +21,10 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Plus, Edit, Trash2 } from "lucide-react"
 import axios from "axios"
-import { toast } from "sonner"
+import { useToast } from "@/hooks/use-toast"
 
 export default function ProductsPage() {
+  const { toast } = useToast()
   const [products, setProducts] = useState<any[]>([])
   const [projects, setProjects] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -78,30 +79,52 @@ export default function ProductsPage() {
 
       if (selectedProduct) {
         await axios.put(`/api/products/${selectedProduct.id}`, payload)
-        toast.success("Product updated successfully")
+        toast({
+          title: "Success",
+          description: "Product updated successfully",
+        })
       } else {
         await axios.post("/api/products", payload)
-        toast.success("Product added successfully")
+        toast({
+          title: "Success",
+          description: "Product added successfully",
+        })
       }
       fetchProducts()
       setDialogOpen(false)
       resetForm()
     } catch (error) {
       console.error("[v0] Error saving product:", error)
-      toast.error("Failed to save product")
+      toast({
+        title: "Error",
+        description: "Failed to save product",
+        variant: "destructive",
+      })
     }
   }
 
   const handleDelete = async (id: number) => {
     if (!confirm("Are you sure you want to delete this product?")) return
 
+    toast({
+      title: "Deleting...",
+      description: "Please wait while we delete the product",
+    })
+
     try {
       await axios.delete(`/api/products/${id}`)
-      toast.success("Product deleted successfully")
+      toast({
+        title: "Success",
+        description: "Product deleted successfully",
+      })
       fetchProducts()
     } catch (error) {
       console.error("[v0] Error deleting product:", error)
-      toast.error("Failed to delete product")
+      toast({
+        title: "Error",
+        description: "Failed to delete product",
+        variant: "destructive",
+      })
     }
   }
 

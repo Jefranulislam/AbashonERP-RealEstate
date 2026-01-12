@@ -19,8 +19,12 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Plus, Search, Edit, Trash2 } from "lucide-react"
 import axios from "axios"
+import { useToast } from "@/hooks/use-toast"
+import { useCurrency } from "@/hooks/use-currency"
 
 export default function SalesPage() {
+  const { toast } = useToast()
+  const { formatAmount } = useCurrency()
   const [sales, setSales] = useState<any[]>([])
   const [customers, setCustomers] = useState<any[]>([])
   const [projects, setProjects] = useState<any[]>([])
@@ -95,25 +99,52 @@ export default function SalesPage() {
     try {
       if (selectedSale) {
         await axios.put(`/api/sales/${selectedSale.id}`, formData)
+        toast({
+          title: "Success",
+          description: "Sale updated successfully",
+        })
       } else {
         await axios.post("/api/sales", formData)
+        toast({
+          title: "Success",
+          description: "Sale created successfully",
+        })
       }
       fetchSales()
       setDialogOpen(false)
       resetForm()
     } catch (error) {
       console.error("[v0] Error saving sale:", error)
+      toast({
+        title: "Error",
+        description: "Failed to save sale",
+        variant: "destructive",
+      })
     }
   }
 
   const handleDelete = async (id: number) => {
     if (!confirm("Are you sure you want to delete this sale?")) return
 
+    toast({
+      title: "Deleting...",
+      description: "Please wait while we delete the sale",
+    })
+
     try {
       await axios.delete(`/api/sales/${id}`)
+      toast({
+        title: "Success",
+        description: "Sale deleted successfully",
+      })
       fetchSales()
     } catch (error) {
       console.error("[v0] Error deleting sale:", error)
+      toast({
+        title: "Error",
+        description: "Failed to delete sale",
+        variant: "destructive",
+      })
     }
   }
 
@@ -320,7 +351,7 @@ export default function SalesPage() {
                         <TableCell>{sale.project_name}</TableCell>
                         <TableCell>{sale.product_name}</TableCell>
                         <TableCell>{new Date(sale.sale_date).toLocaleDateString()}</TableCell>
-                        <TableCell>{sale.amount ? `$${Number(sale.amount).toFixed(2)}` : "-"}</TableCell>
+                        <TableCell>{sale.amount ? formatAmount(sale.amount) : "-"}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
                             <Button variant="ghost" size="icon" onClick={() => openEditDialog(sale)}>

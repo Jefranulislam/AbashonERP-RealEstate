@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useQuery } from "@tanstack/react-query"
 import axios from "axios"
+import { formatDateDMY } from "@/lib/utils"
 import { BalanceSheetPDF } from "@/components/pdf/balance-sheet-pdf"
 import { printDocument, getCompanySettings } from "@/lib/pdf-utils"
 import { Button } from "@/components/ui/button"
@@ -100,7 +101,7 @@ export default function BalanceSheetPage() {
           <Card>
             <CardHeader className="text-center border-b">
               <h2 className="text-2xl font-bold">Balance Sheet</h2>
-              <p className="text-sm text-muted-foreground">As on: {new Date(balanceSheet.asOnDate).toLocaleDateString()}</p>
+              <p className="text-sm text-muted-foreground">As on: {formatDateDMY(balanceSheet.asOnDate)}</p>
             </CardHeader>
           </Card>
 

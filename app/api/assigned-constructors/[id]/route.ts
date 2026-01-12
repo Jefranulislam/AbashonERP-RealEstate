@@ -24,11 +24,12 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getCurrentUser()
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    const id = Number.parseInt(params.id)
+    const { id: idString } = await params
+    const id = Number.parseInt(idString)
     await sql`DELETE FROM assigned_constructors WHERE id = ${id}`
     return NextResponse.json({ success: true })
   } catch (error) {

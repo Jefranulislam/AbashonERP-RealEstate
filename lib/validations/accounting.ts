@@ -19,6 +19,12 @@ export const creditVoucherSchema = baseVoucherSchema.extend({
   bankCashId: z.coerce.number().positive("Cash type is required"),
   billNo: z.string().optional(),
   amount: z.coerce.number().positive("Amount must be greater than 0"),
+  vendorId: z.coerce.number().optional(),
+  vendorName: z.string().optional(),
+  qty: z.string().optional(),
+  rate: z.string().optional(),
+  inventory: z.string().optional(),
+  memo: z.string().optional(),
 })
 
 export type CreditVoucherFormData = z.infer<typeof creditVoucherSchema>
@@ -30,6 +36,12 @@ export const debitVoucherSchema = baseVoucherSchema.extend({
   bankCashId: z.coerce.number().positive("Cash type is required"),
   billNo: z.string().optional(),
   amount: z.coerce.number().positive("Amount must be greater than 0"),
+  vendorId: z.coerce.number().optional(),
+  vendorName: z.string().optional(),
+  qty: z.string().optional(),
+  rate: z.string().optional(),
+  inventory: z.string().optional(),
+  memo: z.string().optional(),
 })
 
 export type DebitVoucherFormData = z.infer<typeof debitVoucherSchema>

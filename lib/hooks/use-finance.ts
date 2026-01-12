@@ -104,6 +104,27 @@ export function useDeleteFinanceType() {
   })
 }
 
+// ============ Vendors ============
+
+export function useVendors() {
+  return useQuery({
+    queryKey: ["vendors"],
+    queryFn: async () => {
+      const res = await fetch("/api/vendors?limit=100")
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || "Failed to fetch vendors")
+      }
+      const data = await res.json()
+      return data.vendors || []
+    },
+    staleTime: 5 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    gcTime: 10 * 60 * 1000,
+  })
+}
+
 // ============ Expense Heads ============
 
 export function useExpenseHeads() {

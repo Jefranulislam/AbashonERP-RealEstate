@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useQuery } from "@tanstack/react-query"
 import axios from "axios"
+import { formatDateDMY } from "@/lib/utils"
 import { TrialBalancePDF } from "@/components/pdf/trial-balance-pdf"
 import { printDocument, getCompanySettings } from "@/lib/pdf-utils"
 import { Button } from "@/components/ui/button"
@@ -180,7 +181,7 @@ export default function TrialBalancePage() {
         <Card>
           <CardHeader className="text-center border-b">
             <h2 className="text-2xl font-bold">Trial Balance Report</h2>
-            <p className="text-sm text-muted-foreground">Period: {new Date(trialBalance.fromDate).toLocaleDateString()} to {new Date(trialBalance.toDate).toLocaleDateString()}</p>
+            <p className="text-sm text-muted-foreground">Period: {formatDateDMY(trialBalance.fromDate)} to {formatDateDMY(trialBalance.toDate)}</p>
             {trialBalance.projectName && <p className="text-sm font-semibold text-primary mt-1">Project: {trialBalance.projectName}</p>}
           </CardHeader>
           <CardContent className="p-6">

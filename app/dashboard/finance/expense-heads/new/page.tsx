@@ -32,14 +32,14 @@ export default function NewExpenseHeadPage() {
   
   const [formData, setFormData] = useState({
     headName: "",
-    parentId: "",
+    parentId: "none",
     isGroup: false,
     type: "Dr",
     unit: "",
-    incExpTypeId: "",
+    incExpTypeId: "none",
     accountCode: "",
     headType: "",
-    accountCategory: ""
+    accountCategory: "none"
   })
 
   useEffect(() => {
@@ -72,11 +72,11 @@ export default function NewExpenseHeadPage() {
     try {
       await axios.post("/api/finance/expense-heads", {
         headName: formData.headName,
-        parentId: formData.parentId || null,
+        parentId: formData.parentId === "none" ? null : formData.parentId,
         isGroup: formData.isGroup,
         type: formData.type,
         unit: formData.unit || null,
-        incExpTypeId: formData.incExpTypeId || null
+        incExpTypeId: formData.incExpTypeId === "none" ? null : formData.incExpTypeId
       })
 
       alert("Account head created successfully!")
@@ -198,7 +198,7 @@ export default function NewExpenseHeadPage() {
                           <SelectValue placeholder="None (Top Level Account)" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">None (Top Level Account)</SelectItem>
+                          <SelectItem value="none">None (Top Level Account)</SelectItem>
                           {parentGroups.map((group) => (
                             <SelectItem key={group.id} value={group.id.toString()}>
                               <div className="flex items-center gap-2">
@@ -286,7 +286,7 @@ export default function NewExpenseHeadPage() {
                           <SelectValue placeholder="Select expense type" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">None</SelectItem>
+                          <SelectItem value="none">None</SelectItem>
                           {expenseTypes.map((type) => (
                             <SelectItem key={type.id} value={type.id.toString()}>
                               {type.name}
@@ -322,7 +322,7 @@ export default function NewExpenseHeadPage() {
                           <SelectValue placeholder="Select category" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">None</SelectItem>
+                          <SelectItem value="none">None</SelectItem>
                           <SelectItem value="Current Assets">Current Assets</SelectItem>
                           <SelectItem value="Fixed Assets">Fixed Assets</SelectItem>
                           <SelectItem value="Current Liabilities">Current Liabilities</SelectItem>

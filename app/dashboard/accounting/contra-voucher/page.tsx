@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Plus, Trash2, Printer, Search, ArrowRightLeft, Banknote, Building2 } from "lucide-react"
+import { Plus, Trash2, Printer, Search, ArrowRightLeft, Banknote, Building2, ArrowUpDown } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
+import { formatDateDMY } from "@/lib/utils"
 
 import { contraVoucherSchema, type ContraVoucherFormData } from "@/lib/validations/accounting"
 import { useContraVouchers, useCreateContraVoucher, useDeleteVoucher } from "@/lib/hooks/use-accounting"
@@ -33,6 +34,7 @@ const DIALOG_ID = "contra-voucher-form"
 export default function ContraVoucherPage() {
   const [projectFilter, setProjectFilter] = useState<number>()
   const [searchTerm, setSearchTerm] = useState("")
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
   // UI State
   const { dialogs, openDialog, closeDialog } = useUIStore()
@@ -81,7 +83,7 @@ export default function ContraVoucherPage() {
     return "Cash Transfer"
   }
 
-  // Filter vouchers by search term
+  // Filter and sort vouchers
   const filteredVouchers = vouchers.filter((voucher) => {
     if (!searchTerm) return true
     const search = searchTerm.toLowerCase()
@@ -92,7 +94,14 @@ export default function ContraVoucherPage() {
       voucher.cr_bank_cash_name?.toLowerCase().includes(search) ||
       voucher.cheque_number?.toLowerCase().includes(search)
     )
+  }).sort((a: any, b: any) => {
+    const dateA = new Date(a.date).getTime()
+    const dateB = new Date(b.date).getTime()
+    return sortOrder === 'asc' ? dateA - dateB : dateB - dateA
   })
+
+  // Calculate total amount
+  const totalAmount = filteredVouchers.reduce((sum: number, voucher: any) => sum + Number(voucher.amount), 0)
 
   // Form submission
   async function onSubmit(data: ContraVoucherFormData) {
@@ -161,7 +170,7 @@ export default function ContraVoucherPage() {
                 <td class="label">Voucher No:</td>
                 <td>${voucher.voucher_no}</td>
                 <td class="label">Date:</td>
-                <td>${new Date(voucher.date).toLocaleDateString()}</td>
+                <td>${formatDateDMY(voucher.date)}</td>
               </tr>
               <tr>
                 <td class="label">Project:</td>
@@ -554,7 +563,16 @@ export default function ContraVoucherPage() {
                   <TableRow>
                     <TableHead>SL No.</TableHead>
                     <TableHead>Voucher No</TableHead>
-                    <TableHead>Date</TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                        className="h-8 px-2"
+                      >
+                        Date
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                      </Button>
+                    </TableHead>
                     <TableHead>Project</TableHead>
                     <TableHead>From Account</TableHead>
                     <TableHead>To Account</TableHead>
@@ -585,7 +603,7 @@ export default function ContraVoucherPage() {
                         <TableRow key={voucher.id}>
                           <TableCell>{index + 1}</TableCell>
                           <TableCell className="font-medium">{voucher.voucher_no}</TableCell>
-                          <TableCell>{new Date(voucher.date).toLocaleDateString()}</TableCell>
+                          <TableCell>{formatDateDMY(voucher.date)}</TableCell>
                           <TableCell>{voucher.project_name}</TableCell>
                           <TableCell>{voucher.dr_bank_cash_name}</TableCell>
                           <TableCell>{voucher.cr_bank_cash_name}</TableCell>
@@ -620,6 +638,15 @@ export default function ContraVoucherPage() {
                         </TableRow>
                       )
                     })
+                  )}
+                  {filteredVouchers.length > 0 && (
+                    <TableRow className="bg-muted/50 font-semibold">
+                      <TableCell colSpan={8} className="text-right">Total:</TableCell>
+                      <TableCell className="text-right font-bold">
+                        ৳{totalAmount.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
+                      </TableCell>
+                      <TableCell></TableCell>
+                    </TableRow>
                   )}
                 </TableBody>
               </Table>

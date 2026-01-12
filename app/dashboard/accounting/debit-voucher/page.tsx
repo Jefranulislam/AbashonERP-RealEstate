@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Plus, Trash2, Printer, Edit, Search } from "lucide-react"
+import { Plus, Trash2, Printer, Edit, Search, ArrowUpDown } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -21,12 +21,14 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Skeleton } from "@/components/ui/skeleton"
+import { formatDateDMY } from "@/lib/utils"
 
 import { debitVoucherSchema, type DebitVoucherFormData } from "@/lib/validations/accounting"
 import { useDebitVouchers, useCreateDebitVoucher, useDeleteVoucher } from "@/lib/hooks/use-accounting"
 import { useProjects } from "@/lib/hooks/use-finance"
 import { useExpenseHeads } from "@/lib/hooks/use-finance"
 import { useBankCashAccounts } from "@/lib/hooks/use-finance"
+import { useVendors } from "@/lib/hooks/use-finance"
 import { useUIStore } from "@/lib/stores/ui-store"
 import { AccountingVoucherPDF } from "@/components/pdf/accounting-voucher-pdf"
 import { printDocument, getCompanySettings } from "@/lib/pdf-utils"
@@ -39,6 +41,7 @@ export default function DebitVoucherPage() {
   const [printDialogOpen, setPrintDialogOpen] = useState(false)
   const [selectedVoucher, setSelectedVoucher] = useState<any>(null)
   const [companySettings, setCompanySettings] = useState<any>(null)
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
   // UI State
   const { dialogs, openDialog, closeDialog } = useUIStore()
@@ -49,6 +52,7 @@ export default function DebitVoucherPage() {
   const { data: projects = [], isLoading: projectsLoading } = useProjects()
   const { data: expenseHeads = [], isLoading: expenseHeadsLoading } = useExpenseHeads()
   const { data: bankCashAccounts = [], isLoading: bankCashLoading } = useBankCashAccounts()
+  const { data: vendors = [], isLoading: vendorsLoading } = useVendors()
 
   const createVoucher = useCreateDebitVoucher()
   const deleteVoucher = useDeleteVoucher()
@@ -65,10 +69,15 @@ export default function DebitVoucherPage() {
       amount: 0,
       particulars: "",
       isConfirmed: false,
+      vendorName: "",
+      qty: "",
+      rate: "",
+      inventory: "",
+      memo: "",
     },
   })
 
-  // Filter vouchers by search term
+  // Filter and sort vouchers
   const filteredVouchers = vouchers.filter((voucher: any) => {
     if (!searchTerm) return true
     const search = searchTerm.toLowerCase()
@@ -78,7 +87,14 @@ export default function DebitVoucherPage() {
       voucher.expense_head_name?.toLowerCase().includes(search) ||
       voucher.bill_no?.toLowerCase().includes(search)
     )
+  }).sort((a: any, b: any) => {
+    const dateA = new Date(a.date).getTime()
+    const dateB = new Date(b.date).getTime()
+    return sortOrder === 'asc' ? dateA - dateB : dateB - dateA
   })
+
+  // Calculate total amount
+  const totalAmount = filteredVouchers.reduce((sum: number, voucher: any) => sum + Number(voucher.amount), 0)
 
   // Load company settings for PDF
   useEffect(() => {
@@ -256,6 +272,31 @@ export default function DebitVoucherPage() {
                   )}
                 </div>
 
+                {/* Vendor Name */}
+                <div className="space-y-2">
+                  <Label htmlFor="vendorName">Vendor Name</Label>
+                  <Select
+                    value={form.watch("vendorName") || ""}
+                    onValueChange={(value) => form.setValue("vendorName", value === "none" ? "" : value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select vendor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">-- No Vendor --</SelectItem>
+                      {vendorsLoading ? (
+                        <SelectItem value="loading" disabled>Loading...</SelectItem>
+                      ) : (
+                        vendors.map((vendor: any) => (
+                          <SelectItem key={vendor.id} value={vendor.vendor_name}>
+                            {vendor.vendor_name}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 {/* Amount */}
                 <div className="space-y-2">
                   <Label htmlFor="amount">Amount *</Label>
@@ -293,16 +334,57 @@ export default function DebitVoucherPage() {
                     <p className="text-sm text-destructive">{form.formState.errors.date.message}</p>
                   )}
                 </div>
+
+                {/* Quantity */}
+                <div className="space-y-2">
+                  <Label htmlFor="qty">Quantity</Label>
+                  <Input
+                    id="qty"
+                    {...form.register("qty")}
+                    placeholder="e.g., 100, 5 Ton"
+                  />
+                </div>
+
+                {/* Rate */}
+                <div className="space-y-2">
+                  <Label htmlFor="rate">Rate</Label>
+                  <Input
+                    id="rate"
+                    {...form.register("rate")}
+                    placeholder="e.g., 480"
+                  />
+                </div>
+
+                {/* Inventory */}
+                <div className="space-y-2">
+                  <Label htmlFor="inventory">Inventory</Label>
+                  <Input
+                    id="inventory"
+                    {...form.register("inventory")}
+                    placeholder="Stock quantity"
+                  />
+                </div>
               </div>
 
               {/* Particulars */}
               <div className="space-y-2">
-                <Label htmlFor="particulars">Particulars</Label>
+                <Label htmlFor="particulars">Particulars / Description</Label>
                 <Textarea
                   id="particulars"
                   {...form.register("particulars")}
                   placeholder="Enter transaction details"
                   rows={3}
+                />
+              </div>
+
+              {/* Memo / Notes */}
+              <div className="space-y-2">
+                <Label htmlFor="memo">Memo / Notes</Label>
+                <Textarea
+                  id="memo"
+                  {...form.register("memo")}
+                  placeholder="Additional notes or comments"
+                  rows={2}
                 />
               </div>
 
@@ -402,7 +484,16 @@ export default function DebitVoucherPage() {
                   <TableRow>
                     <TableHead>SL No.</TableHead>
                     <TableHead>Project Name</TableHead>
-                    <TableHead>Date</TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                        className="h-8 px-2"
+                      >
+                        Date
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                      </Button>
+                    </TableHead>
                     <TableHead>Head of Account</TableHead>
                     <TableHead>Bill No</TableHead>
                     <TableHead>Voucher No</TableHead>
@@ -423,7 +514,7 @@ export default function DebitVoucherPage() {
                       <TableRow key={voucher.id}>
                         <TableCell>{index + 1}</TableCell>
                         <TableCell>{voucher.project_name}</TableCell>
-                        <TableCell>{new Date(voucher.date).toLocaleDateString()}</TableCell>
+                        <TableCell>{formatDateDMY(voucher.date)}</TableCell>
                         <TableCell>{voucher.expense_head_name}</TableCell>
                         <TableCell>{voucher.bill_no || "-"}</TableCell>
                         <TableCell className="font-medium">{voucher.voucher_no}</TableCell>
@@ -462,6 +553,15 @@ export default function DebitVoucherPage() {
                         </TableCell>
                       </TableRow>
                     ))
+                  )}
+                  {filteredVouchers.length > 0 && (
+                    <TableRow className="bg-muted/50 font-semibold">
+                      <TableCell colSpan={7} className="text-right">Total:</TableCell>
+                      <TableCell className="text-right font-bold">
+                        ৳{totalAmount.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
+                      </TableCell>
+                      <TableCell></TableCell>
+                    </TableRow>
                   )}
                 </TableBody>
               </Table>

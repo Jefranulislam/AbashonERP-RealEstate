@@ -42,6 +42,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     }
 
     const { id } = await params
+    console.log("[DELETE vendor] Attempting to delete vendor with ID:", id)
 
     await sql`
       UPDATE vendors
@@ -49,9 +50,13 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       WHERE id = ${id}
     `
 
+    console.log("[DELETE vendor] Successfully deleted vendor with ID:", id)
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("[v0] Error deleting vendor:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    console.error("[DELETE vendor] Error deleting vendor:", error)
+    return NextResponse.json({ 
+      error: "Internal server error", 
+      details: error instanceof Error ? error.message : "Unknown error" 
+    }, { status: 500 })
   }
 }

@@ -9,9 +9,10 @@ import { Plus, Search, Edit, Trash2 } from "lucide-react"
 import axios from "axios"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { CustomerFormDialog } from "@/components/customer-form-dialog"
-import { toast } from "sonner"
+import { useToast } from "@/hooks/use-toast"
 
 export default function CustomersPage() {
+  const { toast } = useToast()
   const [customers, setCustomers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
@@ -28,7 +29,11 @@ export default function CustomersPage() {
       setCustomers(response.data.customers || [])
     } catch (error) {
       console.error("[v0] Error fetching customers:", error)
-      toast.error("Failed to fetch customers")
+      toast({
+        title: "Error",
+        description: "Failed to fetch customers",
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
     }
@@ -41,13 +46,25 @@ export default function CustomersPage() {
   const handleDelete = async (id: number) => {
     if (!confirm("Are you sure you want to delete this customer?")) return
 
+    toast({
+      title: "Deleting...",
+      description: "Please wait while we delete the customer",
+    })
+
     try {
       await axios.delete(`/api/customers/${id}`)
-      toast.success("Customer deleted successfully")
+      toast({
+        title: "Success",
+        description: "Customer deleted successfully",
+      })
       fetchCustomers()
     } catch (error) {
       console.error("[v0] Error deleting customer:", error)
-      toast.error("Failed to delete customer")
+      toast({
+        title: "Error",
+        description: "Failed to delete customer",
+        variant: "destructive",
+      })
     }
   }
 

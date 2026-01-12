@@ -1,0 +1,8 @@
+-- Add additional fields to vouchers table for detailed tracking
+ALTER TABLE vouchers
+ADD COLUMN IF NOT EXISTS qty VARCHAR(50),
+ADD COLUMN IF NOT EXISTS rate VARCHAR(50),
+ADD COLUMN IF NOT EXISTS inventory VARCHAR(50),
+ADD COLUMN IF NOT EXISTS memo TEXT,
+ADD COLUMN IF NOT EXISTS vendor_name VARCHAR(255),
+ADD COLUMN IF NOT EXISTS account_head_type VARCHAR(255);

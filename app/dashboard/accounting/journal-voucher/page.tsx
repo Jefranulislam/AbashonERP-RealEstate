@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Plus, Trash2, Printer, Search, Scale } from "lucide-react"
+import { Plus, Trash2, Printer, Search, Scale, ArrowUpDown } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
+import { formatDateDMY } from "@/lib/utils"
 
 import { journalVoucherSchema, type JournalVoucherFormData } from "@/lib/validations/accounting"
 import { useJournalVouchers, useCreateJournalVoucher, useDeleteVoucher } from "@/lib/hooks/use-accounting"
@@ -33,6 +34,7 @@ const DIALOG_ID = "journal-voucher-form"
 export default function JournalVoucherPage() {
   const [projectFilter, setProjectFilter] = useState<number>()
   const [searchTerm, setSearchTerm] = useState("")
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
   const { dialogs, openDialog, closeDialog } = useUIStore()
   const isDialogOpen = dialogs[DIALOG_ID] || false
@@ -76,6 +78,7 @@ export default function JournalVoucherPage() {
     }
   }, [crAmount, form])
 
+  // Filter and sort vouchers
   const filteredVouchers = vouchers.filter((voucher) => {
     if (!searchTerm) return true
     const search = searchTerm.toLowerCase()
@@ -84,7 +87,15 @@ export default function JournalVoucherPage() {
       voucher.project_name?.toLowerCase().includes(search) ||
       voucher.bill_no?.toLowerCase().includes(search)
     )
+  }).sort((a: any, b: any) => {
+    const dateA = new Date(a.date).getTime()
+    const dateB = new Date(b.date).getTime()
+    return sortOrder === 'asc' ? dateA - dateB : dateB - dateA
   })
+
+  // Calculate total debit and credit amounts
+  const totalDebitAmount = filteredVouchers.reduce((sum: number, voucher: any) => sum + Number(voucher.amount), 0)
+  const totalCreditAmount = filteredVouchers.reduce((sum: number, voucher: any) => sum + Number(voucher.amount), 0)
 
   async function onSubmit(data: JournalVoucherFormData) {
     try {
@@ -432,7 +443,16 @@ export default function JournalVoucherPage() {
                   <TableRow>
                     <TableHead>SL No.</TableHead>
                     <TableHead>Voucher No</TableHead>
-                    <TableHead>Date</TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                        className="h-8 px-2"
+                      >
+                        Date
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                      </Button>
+                    </TableHead>
                     <TableHead>Project</TableHead>
                     <TableHead>Bill No</TableHead>
                     <TableHead className="text-right">Debit Amount</TableHead>
@@ -453,7 +473,7 @@ export default function JournalVoucherPage() {
                       <TableRow key={voucher.id}>
                         <TableCell>{index + 1}</TableCell>
                         <TableCell className="font-medium">{voucher.voucher_no}</TableCell>
-                        <TableCell>{new Date(voucher.date).toLocaleDateString()}</TableCell>
+                        <TableCell>{formatDateDMY(voucher.date)}</TableCell>
                         <TableCell>{voucher.project_name}</TableCell>
                         <TableCell>{voucher.bill_no || "-"}</TableCell>
                         <TableCell className="text-right font-medium text-blue-600">
@@ -490,6 +510,19 @@ export default function JournalVoucherPage() {
                         </TableCell>
                       </TableRow>
                     ))
+                  )}
+                  {filteredVouchers.length > 0 && (
+                    <TableRow className="bg-muted/50 font-semibold">
+                      <TableCell colSpan={5} className="text-right">Total:</TableCell>
+                      <TableCell className="text-right font-bold text-blue-600">
+                        {totalDebitAmount.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
+                      </TableCell>
+                      <TableCell className="text-right font-bold text-green-600">
+                        {totalCreditAmount.toLocaleString("en-BD", { minimumFractionDigits: 2 })}
+                      </TableCell>
+                      <TableCell></TableCell>
+                      <TableCell></TableCell>
+                    </TableRow>
                   )}
                 </TableBody>
               </Table>

@@ -17,10 +17,11 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Plus, Search, Edit, Trash2 } from "lucide-react"
+import { Plus, Search, Edit, Trash2, Eye } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import axios from "axios"
+import { useToast } from "@/hooks/use-toast"
 
 const MATERIAL_TYPES = [
   "Cement", "Sand", "Steel", "Silicon Sand", "Bricks", "Gravel", "Stone", "TMT Bar",
@@ -28,10 +29,12 @@ const MATERIAL_TYPES = [
 ]
 
 export default function VendorsPage() {
+  const { toast } = useToast()
   const [vendors, setVendors] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [viewDialogOpen, setViewDialogOpen] = useState(false)
   const [selectedVendor, setSelectedVendor] = useState<any>(null)
   const [formData, setFormData] = useState({
     vendorName: "",
@@ -74,25 +77,52 @@ export default function VendorsPage() {
     try {
       if (selectedVendor) {
         await axios.put(`/api/vendors/${selectedVendor.id}`, formData)
+        toast({
+          title: "Success",
+          description: "Vendor updated successfully",
+        })
       } else {
         await axios.post("/api/vendors", formData)
+        toast({
+          title: "Success",
+          description: "Vendor created successfully",
+        })
       }
       fetchVendors()
       setDialogOpen(false)
       resetForm()
     } catch (error) {
       console.error("[v0] Error saving vendor:", error)
+      toast({
+        title: "Error",
+        description: "Failed to save vendor. Please try again.",
+        variant: "destructive",
+      })
     }
   }
 
   const handleDelete = async (id: number) => {
     if (!confirm("Are you sure you want to delete this vendor?")) return
 
+    toast({
+      title: "Deleting...",
+      description: "Please wait while we delete the vendor",
+    })
+
     try {
       await axios.delete(`/api/vendors/${id}`)
+      toast({
+        title: "Success",
+        description: "Vendor deleted successfully",
+      })
       fetchVendors()
     } catch (error) {
       console.error("[v0] Error deleting vendor:", error)
+      toast({
+        title: "Error",
+        description: "Failed to delete vendor. Please try again.",
+        variant: "destructive",
+      })
     }
   }
 
@@ -144,6 +174,11 @@ export default function VendorsPage() {
       isActive: vendor.is_active,
     })
     setDialogOpen(true)
+  }
+
+  const openViewDialog = (vendor: any) => {
+    setSelectedVendor(vendor)
+    setViewDialogOpen(true)
   }
 
   return (
@@ -360,10 +395,13 @@ export default function VendorsPage() {
                         <TableCell>{vendor.email || "-"}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="icon" onClick={() => openEditDialog(vendor)}>
+                            <Button variant="ghost" size="icon" onClick={() => openViewDialog(vendor)} title="View Details">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => openEditDialog(vendor)} title="Edit">
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleDelete(vendor.id)}>
+                            <Button variant="ghost" size="icon" onClick={() => handleDelete(vendor.id)} title="Delete">
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
@@ -377,6 +415,136 @@ export default function VendorsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* View Vendor Dialog */}
+      <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Vendor Details</DialogTitle>
+            <DialogDescription>View vendor information</DialogDescription>
+          </DialogHeader>
+          {selectedVendor && (
+            <div className="space-y-6">
+              {/* Basic Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold border-b pb-2">Basic Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-muted-foreground">Vendor Name</Label>
+                    <p className="font-medium">{selectedVendor.vendor_name}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Status</Label>
+                    <div>
+                      <Badge variant={selectedVendor.is_active ? "default" : "secondary"}>
+                        {selectedVendor.is_active ? "Active" : "Inactive"}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Phone</Label>
+                    <p className="font-medium">{selectedVendor.phone || "-"}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Email</Label>
+                    <p className="font-medium">{selectedVendor.email || "-"}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <Label className="text-muted-foreground">Mailing Address</Label>
+                    <p className="font-medium">{selectedVendor.mailing_address || "-"}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <Label className="text-muted-foreground">Website</Label>
+                    <p className="font-medium">{selectedVendor.website || "-"}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <Label className="text-muted-foreground">Description</Label>
+                    <p className="font-medium">{selectedVendor.description || "-"}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bank Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold border-b pb-2">Bank Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-muted-foreground">Bank Name</Label>
+                    <p className="font-medium">{selectedVendor.bank_name || "-"}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Account Number</Label>
+                    <p className="font-medium">{selectedVendor.bank_account_number || "-"}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Account Name</Label>
+                    <p className="font-medium">{selectedVendor.bank_account_name || "-"}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Branch</Label>
+                    <p className="font-medium">{selectedVendor.bank_branch || "-"}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Routing Number</Label>
+                    <p className="font-medium">{selectedVendor.bank_routing_number || "-"}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">SWIFT Code</Label>
+                    <p className="font-medium">{selectedVendor.bank_swift_code || "-"}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Materials */}
+              {selectedVendor.materials && selectedVendor.materials.length > 0 && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold border-b pb-2">Materials Supplied</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedVendor.materials.map((material: string) => (
+                      <Badge key={material} variant="outline">
+                        {material}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Timestamps */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold border-b pb-2">Additional Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-muted-foreground">Created At</Label>
+                    <p className="font-medium">
+                      {new Date(selectedVendor.created_at).toLocaleString()}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Last Updated</Label>
+                    <p className="font-medium">
+                      {new Date(selectedVendor.updated_at).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setViewDialogOpen(false)
+                    openEditDialog(selectedVendor)
+                  }}
+                >
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit Vendor
+                </Button>
+                <Button onClick={() => setViewDialogOpen(false)}>Close</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

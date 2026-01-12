@@ -143,11 +143,14 @@ export async function POST(request: NextRequest) {
     const result = await sql`
       INSERT INTO vouchers (
         voucher_no, voucher_type, project_id, expense_head_id, bank_cash_id,
-        bill_no, date, amount, particulars, cheque_number, is_confirmed
+        bill_no, date, amount, particulars, cheque_number, is_confirmed,
+        vendor_name, qty, rate, inventory, memo, account_head_type
       ) VALUES (
         ${voucherNo}, ${data.voucherType}, ${data.projectId}, ${data.expenseHeadId},
         ${data.bankCashId}, ${data.billNo}, ${data.date}, ${data.amount},
-        ${data.particulars}, ${data.chequeNumber}, ${data.isConfirmed}
+        ${data.particulars}, ${data.chequeNumber}, ${data.isConfirmed},
+        ${data.vendorName || null}, ${data.qty || null}, ${data.rate || null},
+        ${data.inventory || null}, ${data.memo || null}, ${data.accountHeadType || null}
       )
       RETURNING *
     `
