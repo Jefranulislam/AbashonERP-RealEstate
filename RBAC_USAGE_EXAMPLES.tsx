@@ -249,11 +249,11 @@ function DynamicSidebar() {
   if (loading) return <div>Loading...</div>
   
   const navItems = [
-    { name: "Employees", module: "employees", path: "/dashboard/employees" },
-    { name: "Customers", module: "customers", path: "/dashboard/customers" },
-    { name: "Sales", module: "sales", path: "/dashboard/sales" },
-    { name: "Purchase", module: "purchase", path: "/dashboard/purchase" },
-    { name: "Finance", module: "finance", path: "/dashboard/finance" },
+    { name: "Employees", module: "employees", path: "/employees" },
+    { name: "Customers", module: "customers", path: "/customers" },
+    { name: "Sales", module: "sales", path: "/sales-v2" },
+    { name: "Purchase", module: "purchase", path: "/purchase/requisitions" },
+    { name: "Finance", module: "finance", path: "/finance/types" },
   ]
   
   return (

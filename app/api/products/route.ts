@@ -58,10 +58,16 @@ export async function POST(request: NextRequest) {
 
     const result = await sql`
       INSERT INTO products (
-        project_id, product_name, description, is_active
+        project_id, product_name, product_type, size, rate_per_sqft, utility_charge, price, base_price, description, is_active
       ) VALUES (
         ${data.projectId ? Number.parseInt(data.projectId) : null}, 
         ${data.productName}, 
+        ${data.productType || null},
+        ${data.size ? Number.parseFloat(data.size) : null},
+        ${data.ratePerSqft ? Number.parseFloat(data.ratePerSqft) : null},
+        ${data.utilityCharge ? Number.parseFloat(data.utilityCharge) : 0},
+        ${data.price ? Number.parseFloat(data.price) : null},
+        ${data.price ? Number.parseFloat(data.price) : null},
         ${data.description || null}, 
         ${data.isActive !== false}
       )

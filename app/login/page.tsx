@@ -29,7 +29,7 @@ export default function LoginPage() {
       })
 
       if (response.data.success) {
-        router.push("/dashboard")
+        router.push("/")
         router.refresh()
       }
     } catch (err: any) {

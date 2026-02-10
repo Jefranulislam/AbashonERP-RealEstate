@@ -38,6 +38,7 @@ export async function POST(request: Request) {
       print_on_company_pad,
       currency_code,
       currency_symbol,
+      product_types,
     } = body
 
     // Check if settings exist
@@ -60,6 +61,7 @@ export async function POST(request: Request) {
           print_on_company_pad = ${print_on_company_pad === 'Yes' || print_on_company_pad === true},
           currency_code = ${currency_code || 'BDT'},
           currency_symbol = ${currency_symbol || '৳'},
+          product_types = ${product_types || 'Residential,Commercial,Apartment,Studio,Parking,Gas Line,Others'},
           updated_at = CURRENT_TIMESTAMP
         WHERE id = ${existingSettings[0].id}
         RETURNING *
@@ -76,7 +78,8 @@ export async function POST(request: Request) {
           lead_source,
           print_on_company_pad,
           currency_code,
-          currency_symbol
+          currency_symbol,
+          product_types
         )
         VALUES (
           ${company_name},
@@ -87,7 +90,8 @@ export async function POST(request: Request) {
           ${lead_source},
           ${print_on_company_pad === 'Yes' || print_on_company_pad === true},
           ${currency_code || 'BDT'},
-          ${currency_symbol || '৳'}
+          ${currency_symbol || '৳'},
+          ${product_types || 'Residential,Commercial,Apartment,Studio,Parking,Gas Line,Others'}
         )
         RETURNING *
       `
