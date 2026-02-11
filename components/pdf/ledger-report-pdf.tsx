@@ -27,6 +27,9 @@ interface LedgerReportPDFProps {
   companyName?: string
   companyAddress?: string
   currencySymbol?: string
+  companyLogo?: string
+  footerImage?: string
+  backgroundImage?: string
 }
 
 export function LedgerReportPDF({
@@ -39,6 +42,9 @@ export function LedgerReportPDF({
   companyName,
   companyAddress,
   currencySymbol = '৳',
+  companyLogo,
+  footerImage,
+  backgroundImage,
 }: LedgerReportPDFProps) {
   const totalDebit = entries.reduce((sum, entry) => sum + entry.debit, 0)
   const totalCredit = entries.reduce((sum, entry) => sum + entry.credit, 0)
@@ -50,6 +56,9 @@ export function LedgerReportPDF({
       date={`Period: ${formatDateForPDF(fromDate)} to ${formatDateForPDF(toDate)}`}
       companyName={companyName}
       companyAddress={companyAddress}
+      companyLogo={companyLogo}
+      footerImage={footerImage}
+      backgroundImage={backgroundImage}
     >
       <PDFSection title="Account Information">
         <div className="grid grid-cols-2 gap-x-8 gap-y-2 mb-4">

@@ -32,6 +32,9 @@ interface SalesInvoicePDFProps {
   companyName?: string
   companyAddress?: string
   currencySymbol?: string
+  companyLogo?: string
+  footerImage?: string
+  backgroundImage?: string
 }
 
 export function SalesInvoicePDF({
@@ -40,6 +43,9 @@ export function SalesInvoicePDF({
   companyName,
   companyAddress,
   currencySymbol = '৳',
+  companyLogo,
+  footerImage,
+  backgroundImage,
 }: SalesInvoicePDFProps) {
   const subtotal = items.reduce((sum, item) => sum + item.total, 0)
   const discount = invoice.discount || 0
@@ -54,6 +60,9 @@ export function SalesInvoicePDF({
       date={formatDateForPDF(invoice.invoice_date)}
       companyName={companyName}
       companyAddress={companyAddress}
+      companyLogo={companyLogo}
+      footerImage={footerImage}
+      backgroundImage={backgroundImage}
     >
       <div className="grid grid-cols-2 gap-8 mb-6">
         {/* Bill To */}

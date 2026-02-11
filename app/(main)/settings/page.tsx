@@ -20,7 +20,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2 } from "lucide-react"
+import { Loader2, Upload, X, Image as ImageIcon } from "lucide-react"
 
 interface Settings {
   id?: number
@@ -34,6 +34,9 @@ interface Settings {
   currency_code: string
   currency_symbol: string
   product_types: string
+  company_logo?: string
+  footer_image?: string
+  background_image?: string
 }
 
 export default function SettingsPage() {
@@ -51,6 +54,9 @@ export default function SettingsPage() {
     currency_code: "BDT",
     currency_symbol: "৳",
     product_types: "Residential,Commercial,Apartment,Studio,Parking,Gas Line,Others",
+    company_logo: "",
+    footer_image: "",
+    background_image: "",
   })
 
   // Load existing settings
@@ -76,6 +82,9 @@ export default function SettingsPage() {
           currency_code: data.settings.currency_code || "BDT",
           currency_symbol: data.settings.currency_symbol || "৳",
           product_types: data.settings.product_types || "Residential,Commercial,Apartment,Studio,Parking,Gas Line,Others",
+          company_logo: data.settings.company_logo || "",
+          footer_image: data.settings.footer_image || "",
+          background_image: data.settings.background_image || "",
         })
       }
     } catch (error) {
@@ -97,6 +106,136 @@ export default function SettingsPage() {
     setSettings((prev) => ({
       ...prev,
       [field]: value,
+    }))
+  }
+
+  const [uploading, setUploading] = useState<{[key: string]: boolean}>({})
+
+  const compressImage = (file: File, maxWidth = 800, quality = 0.8): Promise<File> => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')
+      const img = new Image()
+
+      img.onload = () => {
+        // Calculate new dimensions
+        let { width, height } = img
+        
+        if (width > maxWidth || height > maxWidth) {
+          if (width > height) {
+            height = (height * maxWidth) / width
+            width = maxWidth
+          } else {
+            width = (width * maxWidth) / height
+            height = maxWidth
+          }
+        }
+
+        canvas.width = width
+        canvas.height = height
+        
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height)
+          
+          canvas.toBlob((blob) => {
+            if (blob) {
+              const compressedFile = new File([blob], file.name, {
+                type: 'image/jpeg',
+                lastModified: Date.now()
+              })
+              resolve(compressedFile)
+            } else {
+              resolve(file) // Return original if compression fails
+            }
+          }, 'image/jpeg', quality)
+        }
+      }
+
+      img.onerror = () => {
+        resolve(file) // Return original if processing fails
+      }
+
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        img.src = e.target?.result as string
+      }
+      reader.readAsDataURL(file)
+    })
+  }
+
+  const handleImageUpload = async (field: 'company_logo' | 'footer_image' | 'background_image', file: File) => {
+    if (!file) return
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload an image file (PNG, JPG, etc.)",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Validate file size (max 10MB before compression)
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please upload an image smaller than 10MB",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setUploading(prev => ({ ...prev, [field]: true }))
+
+    try {
+      // Compress image on client side
+      const compressedFile = await compressImage(file, 800, 0.8)
+      console.log(`Compressed ${file.name}: ${Math.round(file.size/1024)}KB → ${Math.round(compressedFile.size/1024)}KB`)
+
+      // Upload to local storage (fallback while WordPress permissions are being fixed)
+      const formData = new FormData()
+      formData.append('file', compressedFile)
+      formData.append('imageType', field)
+
+      const response = await fetch('/api/upload-media-local', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const result = await response.json()
+
+      if (result.success && result.url) {
+        // Update settings with WordPress URL
+        setSettings((prev) => ({
+          ...prev,
+          [field]: result.url,
+        }))
+
+        toast({
+          title: "Image uploaded successfully",
+          description: `${field.replace('_', ' ')} saved locally in project`,
+        })
+      } else {
+        throw new Error(result.error || 'Upload failed')
+      }
+
+    } catch (error) {
+      console.error('Upload error:', error)
+      toast({
+        title: "Upload failed",
+        description: error instanceof Error ? error.message : "Could not upload image",
+        variant: "destructive",
+      })
+    } finally {
+      setUploading(prev => ({ ...prev, [field]: false }))
+    }
+  }
+
+  const handleRemoveImage = (field: 'company_logo' | 'footer_image' | 'background_image') => {
+    setSettings((prev) => ({
+      ...prev,
+      [field]: '',
     }))
   }
 
@@ -260,12 +399,186 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
+      {/* PDF Images Configuration */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>PDF Customization</CardTitle>
+          <CardDescription>
+            Upload images that will appear on all PDF documents (logo, footer image, and background graphic)
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Company Logo */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Company Logo</Label>
+              <p className="text-xs text-muted-foreground">Appears in PDF headers - stored locally (max 10MB)</p>
+              
+              {settings.company_logo ? (
+                <div className="relative border border-dashed border-gray-300 rounded-lg p-4">
+                  <img 
+                    src={settings.company_logo} 
+                    alt="Company Logo Preview" 
+                    className="max-h-20 max-w-full mx-auto object-contain"
+                  />
+                  <Button
+                    variant="destructive" 
+                    size="sm"
+                    className="absolute top-1 right-1"
+                    onClick={() => handleRemoveImage('company_logo')}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="border border-dashed border-gray-300 rounded-lg p-6 text-center">
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) handleImageUpload('company_logo', file)
+                    }}
+                    disabled={uploading.company_logo}
+                    className="hidden"
+                    id="company-logo-upload"
+                  />
+                  <Label 
+                    htmlFor="company-logo-upload" 
+                    className="cursor-pointer flex flex-col items-center space-y-2 hover:bg-gray-50 p-2 rounded"
+                  >
+                    {uploading.company_logo ? (
+                      <><Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
+                      <span className="text-sm text-blue-600">Uploading...</span></>
+                    ) : (
+                      <><Upload className="h-8 w-8 text-gray-400" />
+                      <span className="text-sm text-gray-600">Upload Logo</span></>
+                    )}
+                  </Label>
+                </div>
+              )}
+            </div>
+
+            {/* Footer Image */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Footer Image</Label>
+              <p className="text-xs text-muted-foreground">Appears in PDF footers - stored locally (max 10MB)</p>
+              
+              {settings.footer_image ? (
+                <div className="relative border border-dashed border-gray-300 rounded-lg p-4">
+                  <img 
+                    src={settings.footer_image} 
+                    alt="Footer Image Preview" 
+                    className="max-h-20 max-w-full mx-auto object-contain"
+                  />
+                  <Button
+                    variant="destructive" 
+                    size="sm"
+                    className="absolute top-1 right-1"
+                    onClick={() => handleRemoveImage('footer_image')}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="border border-dashed border-gray-300 rounded-lg p-6 text-center">
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) handleImageUpload('footer_image', file)
+                    }}
+                    disabled={uploading.footer_image}
+                    className="hidden"
+                    id="footer-image-upload"
+                  />
+                  <Label 
+                    htmlFor="footer-image-upload" 
+                    className="cursor-pointer flex flex-col items-center space-y-2 hover:bg-gray-50 p-2 rounded"
+                  >
+                    {uploading.footer_image ? (
+                      <><Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
+                      <span className="text-sm text-blue-600">Uploading...</span></>
+                    ) : (
+                      <><Upload className="h-8 w-8 text-gray-400" />
+                      <span className="text-sm text-gray-600">Upload Footer Image</span></>
+                    )}
+                  </Label>
+                </div>
+              )}
+            </div>
+
+            {/* Background Image */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Background Graphic</Label>
+              <p className="text-xs text-muted-foreground">Appears on left side of PDFs - stored locally (max 10MB)</p>
+              
+              {settings.background_image ? (
+                <div className="relative border border-dashed border-gray-300 rounded-lg p-4">
+                  <img 
+                    src={settings.background_image} 
+                    alt="Background Image Preview" 
+                    className="max-h-20 max-w-full mx-auto object-contain"
+                  />
+                  <Button
+                    variant="destructive" 
+                    size="sm"
+                    className="absolute top-1 right-1"
+                    onClick={() => handleRemoveImage('background_image')}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="border border-dashed border-gray-300 rounded-lg p-6 text-center">
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) handleImageUpload('background_image', file)
+                    }}
+                    disabled={uploading.background_image}
+                    className="hidden"
+                    id="background-image-upload"
+                  />
+                  <Label 
+                    htmlFor="background-image-upload" 
+                    className="cursor-pointer flex flex-col items-center space-y-2 hover:bg-gray-50 p-2 rounded"
+                  >
+                    {uploading.background_image ? (
+                      <><Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
+                      <span className="text-sm text-blue-600">Uploading...</span></>
+                    ) : (
+                      <><Upload className="h-8 w-8 text-gray-400" />
+                      <span className="text-sm text-gray-600">Upload Background</span></>
+                    )}
+                  </Label>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <div className="mt-6">
+            <Button onClick={handleSave} disabled={saving}>
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {saving ? "Saving..." : "Save Settings"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
         <h3 className="font-semibold text-blue-900 mb-2">Notes:</h3>
         <ul className="list-disc list-inside text-sm text-blue-800 space-y-1">
           <li>Lead Status and Lead Source values are used by CRM</li>
           <li>Invoice Prefix is used by Sales module</li>
           <li>Product Types are used in Products module for categorization</li>
+          <li>PDF Images will automatically appear on all generated PDFs</li>
+          <li>Images are stored locally in your project's /public/uploads folder</li>
+          <li>Images are automatically compressed and optimized for PDF performance</li>
+          <li>Maximum file size: 10MB (will be compressed automatically)</li>
           <li>Settings affect many modules across the ERP</li>
         </ul>
       </div>

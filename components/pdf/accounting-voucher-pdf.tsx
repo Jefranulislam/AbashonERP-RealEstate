@@ -25,6 +25,9 @@ interface AccountingVoucherPDFProps {
   companyName?: string
   companyAddress?: string
   currencySymbol?: string
+  companyLogo?: string
+  footerImage?: string
+  backgroundImage?: string
 }
 
 export function AccountingVoucherPDF({
@@ -33,6 +36,9 @@ export function AccountingVoucherPDF({
   companyName,
   companyAddress,
   currencySymbol = '৳',
+  companyLogo,
+  footerImage,
+  backgroundImage,
 }: AccountingVoucherPDFProps) {
   const voucherTypeTitle = {
     debit: 'Debit Voucher',
@@ -51,6 +57,9 @@ export function AccountingVoucherPDF({
       date={formatDateForPDF(voucher.voucher_date)}
       companyName={companyName}
       companyAddress={companyAddress}
+      companyLogo={companyLogo}
+      footerImage={footerImage}
+      backgroundImage={backgroundImage}
     >
       <PDFSection title="Voucher Information">
         <div className="grid grid-cols-2 gap-x-8 gap-y-2">

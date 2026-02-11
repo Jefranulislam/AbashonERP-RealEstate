@@ -1,8 +1,8 @@
 "use client"
 
 import type React from "react"
-import { useEffect, useState, useRef } from "react"
-import { useReactToPrint } from "react-to-print"
+import { useEffect, useState } from "react"
+import { printDocument } from "@/lib/pdf-utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -50,20 +50,25 @@ interface Payment {
   sale_no: string
   customer_name: string
   customer_phone: string
+  customer_address?: string
   project_name: string
   product_name: string
   unit_no: string
+  floor_no?: string
   payment_date: string
   amount: number
   payment_method: string
-  cheque_number: string
+  cheque_number?: string
+  cheque_bank?: string
+  cheque_date?: string
+  bank_account_name?: string
+  transaction_reference?: string
   status: string
 }
 
 export default function PaymentCollectionPage() {
   const { toast } = useToast()
   const { formatAmount } = useCurrency()
-  const printRef = useRef<HTMLDivElement>(null)
   
   // States
   const [dueSchedules, setDueSchedules] = useState<PaymentSchedule[]>([])
@@ -178,17 +183,33 @@ export default function PaymentCollectionPage() {
     }
   }
 
-  const handlePrint = useReactToPrint({
-    contentRef: printRef,
-    documentTitle: `Receipt-${printData?.receipt_no || 'Payment'}`,
-  })
+  // Handle printing existing receipts - direct print
+  const handlePrintExistingReceipt = async (paymentId: number) => {
+    try {
+      const response = await axios.get(`/api/sales-v2/payments/${paymentId}`)
+      const paymentData = response.data.payment
+      
+      if (paymentData) {
+        // Set print data and trigger immediate print
+        setPrintData(paymentData)
+        setTimeout(() => {
+          printDocument('print-receipt-content')
+        }, 100)
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load receipt data.",
+        variant: "destructive",
+      })
+    }
+  }
 
-  // Auto-print when printData is set
+  // Auto-print when printData is set (for new payments)
   useEffect(() => {
-    if (printData && printRef.current) {
-      // Small delay to ensure DOM is updated
+    if (printData) {
       const timer = setTimeout(() => {
-        handlePrint()
+        printDocument('print-receipt-content')
       }, 300)
       return () => clearTimeout(timer)
     }
@@ -448,7 +469,12 @@ export default function PaymentCollectionPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => handlePrintExistingReceipt(payment.id)}
+                          title="Print Receipt"
+                        >
                           <Printer className="h-4 w-4" />
                         </Button>
                       </TableCell>
@@ -640,18 +666,19 @@ export default function PaymentCollectionPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Print Component (off-screen for react-to-print compatibility) */}
-      <div style={{ position: 'absolute', left: '-9999px', top: '-9999px' }}>
-        <div ref={printRef}>
-          {printData && (
-            <MoneyReceiptPDF
-              receipt={printData}
-              companyName={companySettings.company_name}
-              companyAddress={companySettings.address}
-              currencySymbol={companySettings.currency_symbol}
-            />
-          )}
-        </div>
+      {/* Print Component (hidden div for printing) */}
+      <div id="print-receipt-content" style={{ display: 'none' }}>
+        {printData && (
+          <MoneyReceiptPDF
+            receipt={printData}
+            companyName={companySettings.company_name}
+            companyAddress={companySettings.address}
+            currencySymbol={companySettings.currency_symbol}
+            companyLogo={companySettings.company_logo}
+            footerImage={companySettings.footer_image}
+            backgroundImage={companySettings.background_image}
+          />
+        )}
       </div>
     </div>
   )

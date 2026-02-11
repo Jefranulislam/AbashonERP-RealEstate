@@ -79,6 +79,9 @@ interface MoneyReceiptPDFProps {
   companyName?: string
   companyAddress?: string
   currencySymbol?: string
+  companyLogo?: string
+  footerImage?: string
+  backgroundImage?: string
 }
 
 export function MoneyReceiptPDF({
@@ -86,6 +89,9 @@ export function MoneyReceiptPDF({
   companyName,
   companyAddress,
   currencySymbol = '৳',
+  companyLogo,
+  footerImage,
+  backgroundImage,
 }: MoneyReceiptPDFProps) {
   const amountInWords = numberToWords(Math.floor(receipt.amount)) + ' Taka Only'
 
@@ -96,6 +102,9 @@ export function MoneyReceiptPDF({
       date={formatDateForPDF(receipt.payment_date)}
       companyName={companyName}
       companyAddress={companyAddress}
+      companyLogo={companyLogo}
+      footerImage={footerImage}
+      backgroundImage={backgroundImage}
     >
       <div className="grid grid-cols-2 gap-8 mb-6">
         {/* Customer Details */}

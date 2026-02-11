@@ -35,6 +35,9 @@ interface PaymentSchedulePDFProps {
   companyName?: string
   companyAddress?: string
   currencySymbol?: string
+  companyLogo?: string
+  footerImage?: string
+  backgroundImage?: string
 }
 
 export function PaymentSchedulePDF({
@@ -43,6 +46,9 @@ export function PaymentSchedulePDF({
   companyName,
   companyAddress,
   currencySymbol = '৳',
+  companyLogo,
+  footerImage,
+  backgroundImage,
 }: PaymentSchedulePDFProps) {
   const totalAmount = schedules.reduce((sum, s) => sum + s.amount, 0)
   const totalPaid = schedules.reduce((sum, s) => sum + s.paid_amount, 0)
@@ -75,6 +81,9 @@ export function PaymentSchedulePDF({
       date={formatDateForPDF(new Date().toISOString())}
       companyName={companyName}
       companyAddress={companyAddress}
+      companyLogo={companyLogo}
+      footerImage={footerImage}
+      backgroundImage={backgroundImage}
     >
       <div className="grid grid-cols-2 gap-8 mb-6">
         {/* Customer Details */}

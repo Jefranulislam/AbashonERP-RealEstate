@@ -28,6 +28,8 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
+    console.log("[v0] Settings POST - Body keys:", Object.keys(body))
+    
     const {
       company_name,
       invoice_prefix,
@@ -39,7 +41,21 @@ export async function POST(request: Request) {
       currency_code,
       currency_symbol,
       product_types,
+      company_logo,
+      footer_image,
+      background_image,
     } = body
+
+    // Log image URLs for debugging
+    if (company_logo) {
+      console.log("[v0] Company logo URL:", company_logo)
+    }
+    if (footer_image) {
+      console.log("[v0] Footer image URL:", footer_image)
+    }
+    if (background_image) {
+      console.log("[v0] Background image URL:", background_image)
+    }
 
     // Check if settings exist
     const existingSettings = await sql`
@@ -62,6 +78,9 @@ export async function POST(request: Request) {
           currency_code = ${currency_code || 'BDT'},
           currency_symbol = ${currency_symbol || '৳'},
           product_types = ${product_types || 'Residential,Commercial,Apartment,Studio,Parking,Gas Line,Others'},
+          company_logo = ${company_logo || null},
+          footer_image = ${footer_image || null},
+          background_image = ${background_image || null},
           updated_at = CURRENT_TIMESTAMP
         WHERE id = ${existingSettings[0].id}
         RETURNING *
@@ -79,7 +98,10 @@ export async function POST(request: Request) {
           print_on_company_pad,
           currency_code,
           currency_symbol,
-          product_types
+          product_types,
+          company_logo,
+          footer_image,
+          background_image
         )
         VALUES (
           ${company_name},
@@ -91,7 +113,10 @@ export async function POST(request: Request) {
           ${print_on_company_pad === 'Yes' || print_on_company_pad === true},
           ${currency_code || 'BDT'},
           ${currency_symbol || '৳'},
-          ${product_types || 'Residential,Commercial,Apartment,Studio,Parking,Gas Line,Others'}
+          ${product_types || 'Residential,Commercial,Apartment,Studio,Parking,Gas Line,Others'},
+          ${company_logo || null},
+          ${footer_image || null},
+          ${background_image || null}
         )
         RETURNING *
       `
@@ -103,6 +128,16 @@ export async function POST(request: Request) {
     })
   } catch (error) {
     console.error("[v0] Error saving settings:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    
+    // Check if it's a database size limit error
+    if (error instanceof Error && error.message.includes('value too long')) {
+      return NextResponse.json({ 
+        error: "Image file too large. Please use images smaller than 1MB." 
+      }, { status: 413 })
+    }
+    
+    return NextResponse.json({ 
+      error: "Internal server error: " + (error instanceof Error ? error.message : "Unknown error")
+    }, { status: 500 })
   }
 }

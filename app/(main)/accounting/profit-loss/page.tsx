@@ -320,15 +320,19 @@ export default function ProfitLossPage() {
         <div className="hidden">
           <div id="print-profit-loss-content">
             <ProfitLossPDF
+              fromDate={params.fromDate}
+              toDate={params.toDate}
               revenue={profitLoss.income}
               expenses={profitLoss.expenses}
-              totals={profitLoss.totals}
-              fromDate={profitLoss.fromDate}
-              toDate={profitLoss.toDate}
-              projectName={profitLoss.projectName}
+              grossProfit={profitLoss.grossProfit}
+              operatingProfit={profitLoss.operatingProfit}
+              netProfit={profitLoss.netProfit}
               companyName={companySettings.company_name}
               companyAddress={companySettings.address}
               currencySymbol={companySettings.currency_symbol}
+              companyLogo={companySettings.company_logo}
+              footerImage={companySettings.footer_image}
+              backgroundImage={companySettings.background_image}
             />
           </div>
         </div>

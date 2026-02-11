@@ -28,6 +28,9 @@ interface ProfitLossPDFProps {
   companyName?: string
   companyAddress?: string
   currencySymbol?: string
+  companyLogo?: string
+  footerImage?: string
+  backgroundImage?: string
 }
 
 export function ProfitLossPDF({
@@ -41,6 +44,9 @@ export function ProfitLossPDF({
   companyName,
   companyAddress,
   currencySymbol = '৳',
+  companyLogo,
+  footerImage,
+  backgroundImage,
 }: ProfitLossPDFProps) {
   const isProfitable = netProfit >= 0
   const profitMargin = revenue.total > 0 ? (netProfit / revenue.total) * 100 : 0
@@ -52,6 +58,9 @@ export function ProfitLossPDF({
       date={formatDateForPDF(new Date().toISOString())}
       companyName={companyName}
       companyAddress={companyAddress}
+      companyLogo={companyLogo}
+      footerImage={footerImage}
+      backgroundImage={backgroundImage}
     >
       <PDFSection title="Statement Information">
         <div className="grid grid-cols-2 gap-x-8 gap-y-2 mb-6">

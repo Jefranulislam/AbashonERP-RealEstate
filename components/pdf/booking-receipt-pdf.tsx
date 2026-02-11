@@ -43,6 +43,9 @@ interface BookingReceiptPDFProps {
   companyName?: string
   companyAddress?: string
   currencySymbol?: string
+  companyLogo?: string
+  footerImage?: string
+  backgroundImage?: string
 }
 
 // Default terms if none specified
@@ -58,6 +61,9 @@ export function BookingReceiptPDF({
   companyName,
   companyAddress,
   currencySymbol = '৳',
+  companyLogo,
+  footerImage,
+  backgroundImage,
 }: BookingReceiptPDFProps) {
   return (
     <PDFTemplate
@@ -66,6 +72,9 @@ export function BookingReceiptPDF({
       date={formatDateForPDF(booking.booking_date)}
       companyName={companyName}
       companyAddress={companyAddress}
+      companyLogo={companyLogo}
+      footerImage={footerImage}
+      backgroundImage={backgroundImage}
     >
       <div className="grid grid-cols-2 gap-8 mb-6">
         {/* Customer Details */}

@@ -30,6 +30,9 @@ interface PurchaseRequisitionPDFProps {
   companyName?: string
   companyAddress?: string
   currencySymbol?: string
+  companyLogo?: string
+  footerImage?: string
+  backgroundImage?: string
 }
 
 export function PurchaseRequisitionPDF({
@@ -38,6 +41,9 @@ export function PurchaseRequisitionPDF({
   companyName,
   companyAddress,
   currencySymbol = '৳',
+  companyLogo,
+  footerImage,
+  backgroundImage,
 }: PurchaseRequisitionPDFProps) {
   return (
     <PDFTemplate
@@ -46,6 +52,9 @@ export function PurchaseRequisitionPDF({
       date={formatDateForPDF(requisition.requisition_date)}
       companyName={companyName}
       companyAddress={companyAddress}
+      companyLogo={companyLogo}
+      footerImage={footerImage}
+      backgroundImage={backgroundImage}
     >
       <PDFSection title="Requisition Information">
         <div className="grid grid-cols-2 gap-x-8 gap-y-2">

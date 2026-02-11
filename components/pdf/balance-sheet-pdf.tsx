@@ -30,6 +30,9 @@ interface BalanceSheetPDFProps {
   companyName?: string
   companyAddress?: string
   currencySymbol?: string
+  companyLogo?: string
+  footerImage?: string
+  backgroundImage?: string
 }
 
 export function BalanceSheetPDF({
@@ -40,6 +43,9 @@ export function BalanceSheetPDF({
   companyName,
   companyAddress,
   currencySymbol = '৳',
+  companyLogo,
+  footerImage,
+  backgroundImage,
 }: BalanceSheetPDFProps) {
   const totalLiabilitiesAndEquity = liabilities.totalLiabilities + equity.totalEquity
   const isBalanced = Math.abs(assets.totalAssets - totalLiabilitiesAndEquity) < 0.01
@@ -51,6 +57,9 @@ export function BalanceSheetPDF({
       date={formatDateForPDF(new Date().toISOString())}
       companyName={companyName}
       companyAddress={companyAddress}
+      companyLogo={companyLogo}
+      footerImage={footerImage}
+      backgroundImage={backgroundImage}
     >
       <PDFSection title="Statement Information">
         <div className="grid grid-cols-2 gap-x-8 gap-y-2 mb-6">

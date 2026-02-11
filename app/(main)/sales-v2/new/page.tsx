@@ -1,9 +1,9 @@
 "use client"
 
 import type React from "react"
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { useReactToPrint } from "react-to-print"
+import { printDocument } from "@/lib/pdf-utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -34,7 +34,6 @@ export default function NewBookingPage() {
   const editId = searchParams.get("edit")
   const { toast } = useToast()
   const { formatAmount } = useCurrency()
-  const printRef = useRef<HTMLDivElement>(null)
 
   // Current step
   const [currentStep, setCurrentStep] = useState(1)
@@ -324,10 +323,9 @@ export default function NewBookingPage() {
     }
   }
 
-  const handlePrint = useReactToPrint({
-    contentRef: printRef,
-    documentTitle: `Booking-${printData?.sale_no || 'Receipt'}`,
-  })
+  const handlePrint = () => {
+    printDocument('print-booking-content')
+  }
 
   // Render step content
   const renderStepContent = () => {
@@ -888,17 +886,18 @@ export default function NewBookingPage() {
         </div>
       </div>
 
-      {/* Print Template (off-screen but still in DOM for printing) */}
+      {/* Print Template (hidden div for printing) */}
       {printData && (
-        <div style={{ position: 'absolute', left: '-9999px', top: '-9999px' }}>
-          <div ref={printRef}>
-            <BookingReceiptPDF
-              booking={printData}
-              companyName={companySettings.company_name}
-              companyAddress={companySettings.company_address}
-              currencySymbol={companySettings.currency_symbol}
-            />
-          </div>
+        <div id="print-booking-content" style={{ display: 'none' }}>
+          <BookingReceiptPDF
+            booking={printData}
+            companyName={companySettings.company_name}
+            companyAddress={companySettings.company_address}
+            currencySymbol={companySettings.currency_symbol}
+            companyLogo={companySettings.company_logo}
+            footerImage={companySettings.footer_image}
+            backgroundImage={companySettings.background_image}
+          />
         </div>
       )}
     </div>

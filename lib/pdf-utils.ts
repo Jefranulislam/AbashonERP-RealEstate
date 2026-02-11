@@ -9,6 +9,9 @@ interface CompanySettings {
   invoice_prefix: string
   currency_symbol: string
   print_on_company_pad: boolean
+  company_logo?: string
+  footer_image?: string
+  background_image?: string
 }
 
 /**
@@ -24,6 +27,9 @@ export async function getCompanySettings(): Promise<CompanySettings> {
       invoice_prefix: data.settings?.invoice_prefix || 'INV',
       currency_symbol: data.settings?.currency_symbol || '৳',
       print_on_company_pad: data.settings?.print_on_company_pad || false,
+      company_logo: data.settings?.company_logo || null,
+      footer_image: data.settings?.footer_image || null,
+      background_image: data.settings?.background_image || null,
     }
   } catch (error) {
     console.error('Error fetching company settings:', error)
@@ -33,6 +39,9 @@ export async function getCompanySettings(): Promise<CompanySettings> {
       invoice_prefix: 'INV',
       currency_symbol: '৳',
       print_on_company_pad: false,
+      company_logo: null,
+      footer_image: null,
+      background_image: null,
     }
   }
 }

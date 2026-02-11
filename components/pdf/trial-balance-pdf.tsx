@@ -19,6 +19,9 @@ interface TrialBalancePDFProps {
   companyName?: string
   companyAddress?: string
   currencySymbol?: string
+  companyLogo?: string
+  footerImage?: string
+  backgroundImage?: string
 }
 
 export function TrialBalancePDF({
@@ -29,6 +32,9 @@ export function TrialBalancePDF({
   companyName,
   companyAddress,
   currencySymbol = '৳',
+  companyLogo,
+  footerImage,
+  backgroundImage,
 }: TrialBalancePDFProps) {
   const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01
 
@@ -48,6 +54,9 @@ export function TrialBalancePDF({
       date={formatDateForPDF(new Date().toISOString())}
       companyName={companyName}
       companyAddress={companyAddress}
+      companyLogo={companyLogo}
+      footerImage={footerImage}
+      backgroundImage={backgroundImage}
     >
       <PDFSection title="Statement Information">
         <div className="grid grid-cols-2 gap-x-8 gap-y-2 mb-6">

@@ -278,13 +278,15 @@ export default function TrialBalancePage() {
           <div id="print-trial-balance-content">
             <TrialBalancePDF
               accounts={trialBalance.accounts}
-              totals={trialBalance.totals}
-              fromDate={trialBalance.fromDate}
-              toDate={trialBalance.toDate}
-              projectName={trialBalance.projectName}
+              asOfDate={params.toDate}
+              totalDebit={trialBalance.totals.totalDebit}
+              totalCredit={trialBalance.totals.totalCredit}
               companyName={companySettings.company_name}
               companyAddress={companySettings.address}
               currencySymbol={companySettings.currency_symbol}
+              companyLogo={companySettings.company_logo}
+              footerImage={companySettings.footer_image}
+              backgroundImage={companySettings.background_image}
             />
           </div>
         </div>

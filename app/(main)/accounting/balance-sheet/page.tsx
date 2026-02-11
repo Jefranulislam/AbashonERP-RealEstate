@@ -353,6 +353,9 @@ export default function BalanceSheetPage() {
               companyName={companySettings.company_name}
               companyAddress={companySettings.address}
               currencySymbol={companySettings.currency_symbol}
+              companyLogo={companySettings.company_logo}
+              footerImage={companySettings.footer_image}
+              backgroundImage={companySettings.background_image}
             />
           </div>
         </div>
