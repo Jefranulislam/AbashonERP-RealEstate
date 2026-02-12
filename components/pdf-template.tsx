@@ -24,15 +24,19 @@ export function PDFTemplate({
   children,
 }: PDFTemplateProps) {
   return (
-    <div className="bg-white p-8 max-w-[210mm] mx-auto relative">
+    <div className="bg-white p-8 max-w-[210mm] mx-auto relative overflow-hidden">
       {/* Background Image on Left Side */}
       {backgroundImage && (
-        <div className="absolute left-0 top-0 w-32 h-full opacity-10 z-0">
+        <div className="absolute left-0 top-0 w-64 h-full opacity-15 z-0">
           <img 
             src={backgroundImage}
             alt="Company Background"
             className="w-full h-full object-cover object-left"
-            style={{ filter: 'grayscale(20%)' }}
+            style={{ 
+              filter: 'grayscale(30%)',
+              mixBlendMode: 'multiply',
+              background: 'transparent'
+            }}
           />
         </div>
       )}
@@ -52,6 +56,7 @@ export function PDFTemplate({
                   src={companyLogo}
                   alt="Company Logo"
                   className="h-16 w-auto max-w-[120px] object-contain"
+                  style={{ background: 'transparent' }}
                 />
               </div>
             )}
@@ -80,21 +85,29 @@ export function PDFTemplate({
 
       {/* Footer */}
       <div className="border-t border-gray-300 pt-4 mt-8">
-        <div className="flex items-center justify-between">
-          <div className="flex-1 text-center text-xs text-gray-500">
-            <p>This is a computer-generated document. No signature is required.</p>
-            <p className="mt-1">Printed on {new Date().toLocaleString()}</p>
-          </div>
-          {footerImage && (
-            <div className="ml-4">
+        {footerImage ? (
+          <div className="flex flex-col items-center space-y-3">
+            {/* Footer Image - Full Width Center */}
+            <div className="w-full flex justify-center">
               <img 
                 src={footerImage}
                 alt="Footer Image"
-                className="h-12 w-auto max-w-[100px] object-contain"
+                className="max-h-16 w-auto max-w-full object-contain"
+                style={{ background: 'transparent' }}
               />
             </div>
-          )}
-        </div>
+            {/* Footer Text */}
+            <div className="text-center text-xs text-gray-500">
+              <p>This is a computer-generated document. No signature is required.</p>
+              <p className="mt-1">Printed on {new Date().toLocaleString()}</p>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center text-xs text-gray-500">
+            <p>This is a computer-generated document. No signature is required.</p>
+            <p className="mt-1">Printed on {new Date().toLocaleString()}</p>
+          </div>
+        )}
       </div>
       </div>
     </div>

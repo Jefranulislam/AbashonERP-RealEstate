@@ -167,20 +167,30 @@ export default function SettingsPage() {
     if (!file) return
 
     // Validate file type
-    if (!file.type.startsWith('image/')) {
+    const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'image/webp']
+    if (!validTypes.includes(file.type)) {
       toast({
         title: "Invalid file type",
-        description: "Please upload an image file (PNG, JPG, etc.)",
+        description: "Please upload PNG, JPG, SVG, or WebP files. PNG recommended for transparency.",
         variant: "destructive",
       })
       return
     }
 
-    // Validate file size (max 10MB before compression)
-    if (file.size > 10 * 1024 * 1024) {
+    // Recommend PNG for transparency
+    if (field !== 'company_logo' && file.type !== 'image/png' && file.type !== 'image/svg+xml') {
+      toast({
+        title: "Consider PNG format",
+        description: "PNG files work best for transparent backgrounds in PDFs",
+        variant: "default",
+      })
+    }
+
+    // Validate file size (max 5MB before compression)
+    if (file.size > 5 * 1024 * 1024) {
       toast({
         title: "File too large",
-        description: "Please upload an image smaller than 10MB",
+        description: "Please upload an image smaller than 5MB",
         variant: "destructive",
       })
       return
@@ -412,7 +422,7 @@ export default function SettingsPage() {
             {/* Company Logo */}
             <div className="space-y-2">
               <Label className="text-sm font-medium">Company Logo</Label>
-              <p className="text-xs text-muted-foreground">Appears in PDF headers - stored locally (max 10MB)</p>
+              <p className="text-xs text-muted-foreground">PDF header logo - PNG with transparent background recommended (200x80px, max 2MB)</p>
               
               {settings.company_logo ? (
                 <div className="relative border border-dashed border-gray-300 rounded-lg p-4">
@@ -434,7 +444,7 @@ export default function SettingsPage() {
                 <div className="border border-dashed border-gray-300 rounded-lg p-6 text-center">
                   <Input
                     type="file"
-                    accept="image/*"
+                    accept="image/png,image/jpeg,image/jpg,image/svg+xml,image/webp"
                     onChange={(e) => {
                       const file = e.target.files?.[0]
                       if (file) handleImageUpload('company_logo', file)
@@ -462,7 +472,7 @@ export default function SettingsPage() {
             {/* Footer Image */}
             <div className="space-y-2">
               <Label className="text-sm font-medium">Footer Image</Label>
-              <p className="text-xs text-muted-foreground">Appears in PDF footers - stored locally (max 10MB)</p>
+              <p className="text-xs text-muted-foreground">PDF footer (full width) - PNG with transparent background recommended (800x60px, max 2MB)</p>
               
               {settings.footer_image ? (
                 <div className="relative border border-dashed border-gray-300 rounded-lg p-4">
@@ -484,7 +494,7 @@ export default function SettingsPage() {
                 <div className="border border-dashed border-gray-300 rounded-lg p-6 text-center">
                   <Input
                     type="file"
-                    accept="image/*"
+                    accept="image/png,image/jpeg,image/jpg,image/svg+xml,image/webp"
                     onChange={(e) => {
                       const file = e.target.files?.[0]
                       if (file) handleImageUpload('footer_image', file)
@@ -512,7 +522,7 @@ export default function SettingsPage() {
             {/* Background Image */}
             <div className="space-y-2">
               <Label className="text-sm font-medium">Background Graphic</Label>
-              <p className="text-xs text-muted-foreground">Appears on left side of PDFs - stored locally (max 10MB)</p>
+              <p className="text-xs text-muted-foreground">PDF left watermark - PNG with transparent background recommended (300x800px, max 2MB)</p>
               
               {settings.background_image ? (
                 <div className="relative border border-dashed border-gray-300 rounded-lg p-4">
@@ -534,7 +544,7 @@ export default function SettingsPage() {
                 <div className="border border-dashed border-gray-300 rounded-lg p-6 text-center">
                   <Input
                     type="file"
-                    accept="image/*"
+                    accept="image/png,image/jpeg,image/jpg,image/svg+xml,image/webp"
                     onChange={(e) => {
                       const file = e.target.files?.[0]
                       if (file) handleImageUpload('background_image', file)
