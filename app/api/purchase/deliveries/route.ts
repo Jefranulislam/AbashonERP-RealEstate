@@ -36,7 +36,9 @@ export async function GET(request: NextRequest) {
 
     if (poId) query = sql`${query} AND md.po_id = ${poId}`
     if (projectId && projectId !== 'all') query = sql`${query} AND md.project_id = ${projectId}`
-    if (status && status !== 'all') query = sql`${query} AND md.delivery_status = ${status}`
+    if (status && status !== 'all') {
+      query = sql`${query} AND (md.quality_status = ${status} OR md.delivery_status = ${status})`
+    }
 
     query = sql`${query} ORDER BY md.delivery_date DESC, md.created_at DESC`
 

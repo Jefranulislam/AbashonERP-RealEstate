@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
         ${data.termsAndConditions || null},
         ${data.status || 'Draft'},
         ${data.notes || null},
-        ${user.id || null}
+        ${data.preparedById ? parseInt(data.preparedById) : null}
       )
       RETURNING *
     `

@@ -24,7 +24,7 @@ import { Plus, Search, Printer, DollarSign, Calendar, AlertTriangle, CreditCard,
 import axios from "axios"
 import { useToast } from "@/hooks/use-toast"
 import { useCurrency } from "@/hooks/use-currency"
-import { MoneyReceiptPDF } from "@/components/pdf/money-receipt-pdf"
+import { CustomerReceipt } from "@/components/customer-receipt"
 
 interface PaymentSchedule {
   id: number
@@ -214,6 +214,31 @@ export default function PaymentCollectionPage() {
       return () => clearTimeout(timer)
     }
   }, [printData])
+
+  const convertToWords = (amount: number): string => {
+    // Simple number to words conversion 
+    const ones = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+    const tens = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+    const teens = ['ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
+    
+    if (amount === 0) return 'zero taka only'
+    
+    const num = Math.floor(amount)
+    let words = ''
+    
+    if (num >= 1000) {
+      const thousands = Math.floor(num / 1000)
+      words += 'approximately ' + thousands + ' thousand '
+      const remainder = num % 1000
+      if (remainder > 0) {
+        words += remainder + ' '
+      }
+    } else {
+      words = num.toString() + ' '
+    }
+    
+    return words + 'taka only'
+  }
 
   // Summary calculations
   const totalDue = dueSchedules.reduce((sum, s) => sum + (s.amount - s.paid_amount), 0)
@@ -669,14 +694,29 @@ export default function PaymentCollectionPage() {
       {/* Print Component (hidden div for printing) */}
       <div id="print-receipt-content" style={{ display: 'none' }}>
         {printData && (
-          <MoneyReceiptPDF
-            receipt={printData}
-            companyName={companySettings.company_name}
-            companyAddress={companySettings.address}
-            currencySymbol={companySettings.currency_symbol}
-            companyLogo={companySettings.company_logo}
-            footerImage={companySettings.footer_image}
-            backgroundImage={companySettings.background_image}
+          <CustomerReceipt
+            receiptNumber={printData.receipt_no}
+            date={new Date(printData.payment_date).toLocaleDateString()}
+            customerName={printData.customer_name}
+            customerAddress={printData.customer_address || ''}
+            customerPhone={printData.customer_phone || ''}
+            amount={printData.amount}
+            amountInWords={convertToWords(printData.amount)}
+            description={`Payment for ${printData.product_name} - Unit ${printData.unit_no}`}
+            paymentMethod={printData.payment_method}
+            paymentType="Installment"
+            projectName={printData.project_name}
+            unitFlatInfo={`Unit ${printData.unit_no}${printData.floor_no ? `, Floor ${printData.floor_no}` : ''}`}
+            projectAddress={printData.project_address || ''}
+            chequeNumber={printData.cheque_number}
+            bankName={printData.cheque_bank}
+            receivedBy="Sales Department"
+            companyName={companySettings?.company_name || 'Company Name'}
+            companyAddress={companySettings?.address || 'Company Address'}
+            companyPhone={companySettings?.phone || ''}
+            companyEmail={companySettings?.email || ''}
+            companyLogo={companySettings?.company_logo}
+            footerImage={companySettings?.footer_image}
           />
         )}
       </div>

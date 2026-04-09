@@ -5,9 +5,14 @@
   "scripts": {
     "build": "next build",
     "dev": "next dev",
-    "lint": "next lint",
+    "lint": "tsc --noEmit",
     "start": "next start",
-    "migrate:rbac": "tsx scripts/run-rbac-migration.ts"
+    "migrate:rbac": "tsx scripts/run-rbac-migration.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "load:test": "node scripts/load-test.mjs",
+    "verify:all": "pnpm run typecheck && pnpm run lint && pnpm run test && pnpm run build"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -71,6 +76,7 @@
     "zustand": "^5.0.8"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.1",
     "@tailwindcss/postcss": "^4.1.9",
     "@tanstack/react-query-devtools": "^5.90.2",
     "@types/node": "^22",
@@ -80,12 +86,16 @@
     "@types/xlsx": "^0.0.36",
     "baseline-browser-mapping": "^2.9.19",
     "dotenv": "^17.2.3",
+    "autocannon": "^8.0.0",
+    "eslint": "^9.38.0",
+    "eslint-config-next": "^16.0.8",
     "pg": "^8.16.3",
     "postcss": "^8.5",
     "postgres": "^3.4.7",
     "tailwindcss": "^4.1.9",
     "tsx": "^4.21.0",
     "tw-animate-css": "1.3.3",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
   }
 }

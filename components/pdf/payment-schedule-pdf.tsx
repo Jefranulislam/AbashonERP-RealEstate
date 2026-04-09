@@ -145,13 +145,9 @@ export function PaymentSchedulePDF({
           }))}
           columns={['no', 'description', 'dueDate', 'amount', 'paid', 'balance', 'status']}
           footerRow={{
-            no: '',
-            description: 'TOTAL',
-            dueDate: '',
-            amount: formatCurrency(totalAmount, currencySymbol),
-            paid: formatCurrency(totalPaid, currencySymbol),
-            balance: formatCurrency(totalDue, currencySymbol),
-            status: ''
+            label: `TOTAL (Amount: ${formatCurrency(totalAmount, currencySymbol)}, Paid: ${formatCurrency(totalPaid, currencySymbol)})`,
+            colspan: 6,
+            value: formatCurrency(totalDue, currencySymbol)
           }}
         />
       </PDFSection>

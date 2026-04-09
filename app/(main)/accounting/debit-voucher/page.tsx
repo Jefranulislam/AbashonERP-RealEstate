@@ -69,7 +69,7 @@ export default function DebitVoucherPage() {
       amount: 0,
       particulars: "",
       isConfirmed: false,
-      vendorName: "",
+      vendorId: 0,
       qty: "",
       rate: "",
       inventory: "",
@@ -159,11 +159,26 @@ export default function DebitVoucherPage() {
       },
     ]
 
-    setSelectedVoucher({ voucher: voucherForPDF, entries })
+    setSelectedVoucher({ 
+      voucher: voucherForPDF, 
+      entries,
+      originalVoucher: voucher // Keep original data for professional templates
+    })
     setPrintDialogOpen(true)
-    
+    // Don't auto-print, let user choose mode first
+  }
+
+  // Convert amount to words (simple implementation)
+  function convertToWords(amount: number): string {
+    const formatter = new Intl.NumberFormat('en-BD')
+    return `${formatter.format(amount)} Taka Only`
+  }
+
+  // Handle print function
+  function executePrint() {
+    const contentId = 'print-voucher-content'
     setTimeout(() => {
-      printDocument('print-voucher-content')
+      printDocument(contentId)
     }, 100)
   }
 
@@ -274,10 +289,10 @@ export default function DebitVoucherPage() {
 
                 {/* Vendor Name */}
                 <div className="space-y-2">
-                  <Label htmlFor="vendorName">Vendor Name</Label>
+                  <Label htmlFor="vendorId">Vendor Name</Label>
                   <Select
-                    value={form.watch("vendorName") || ""}
-                    onValueChange={(value) => form.setValue("vendorName", value === "none" ? "" : value)}
+                    value={form.watch("vendorId")?.toString() ?? ""}
+                    onValueChange={(value) => form.setValue("vendorId", value === "none" ? 0 : parseInt(value))}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select vendor" />
@@ -288,8 +303,8 @@ export default function DebitVoucherPage() {
                         <SelectItem value="loading" disabled>Loading...</SelectItem>
                       ) : (
                         vendors.map((vendor: any) => (
-                          <SelectItem key={vendor.id} value={vendor.vendor_name}>
-                            {vendor.vendor_name}
+                          <SelectItem key={vendor.id} value={vendor.id.toString()}>
+                            {vendor.vendor_name} (ID: {vendor.id})
                           </SelectItem>
                         ))
                       )}
@@ -572,6 +587,39 @@ export default function DebitVoucherPage() {
 
       {/* Hidden Print Content */}
       <div className="hidden">
+        {/* Print Mode Selection Dialog */}
+        {printDialogOpen && (
+          <Dialog open={printDialogOpen} onOpenChange={setPrintDialogOpen}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Choose Print Format</DialogTitle>
+                <DialogDescription>
+                  Select how you want to print this debit voucher
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="space-y-4">
+                <div className="text-center">
+                  <div className="font-semibold">📊 Accountant Voucher</div>
+                  <div className="text-sm text-muted-foreground">
+                    Internal accounting voucher with debit/credit entries
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button onClick={executePrint} className="flex-1">
+                    🖨️ Print Voucher
+                  </Button>
+                  <Button variant="outline" onClick={() => setPrintDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {/* Accountant View - Traditional Voucher */}
         {printDialogOpen && selectedVoucher && companySettings && (
           <div id="print-voucher-content">
             <AccountingVoucherPDF

@@ -13,6 +13,7 @@ import {
   Briefcase,
   CreditCard,
   Wallet,
+  FileText,
 } from "lucide-react"
 
 import {

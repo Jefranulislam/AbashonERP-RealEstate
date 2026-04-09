@@ -11,8 +11,9 @@ async function deleteAllVouchers() {
   console.log("🗑️  Deleting ALL vouchers from database...");
 
   try {
-    const result = await sql`DELETE FROM vouchers`;
-    console.log(`✅ Deleted ${result.count} voucher records`);
+    const countBefore = await sql`SELECT COUNT(*)::int AS count FROM vouchers`;
+    await sql`DELETE FROM vouchers`;
+    console.log(`✅ Deleted ${countBefore[0]?.count ?? 0} voucher records`);
     
     console.log("✨ Database is now clean and ready for fresh data");
   } catch (error) {

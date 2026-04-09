@@ -4,13 +4,13 @@ import { getCurrentUser } from "@/lib/auth"
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getCurrentUser()
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     
-    const id = parseInt(params.id)
+    const id = parseInt((await context.params).id)
     if (isNaN(id)) {
       return NextResponse.json({ error: "Invalid ID" }, { status: 400 })
     }
@@ -46,13 +46,13 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getCurrentUser()
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     
-    const id = parseInt(params.id)
+    const id = parseInt((await context.params).id)
     if (isNaN(id)) {
       return NextResponse.json({ error: "Invalid ID" }, { status: 400 })
     }

@@ -33,7 +33,7 @@ async function checkSettingsTable() {
       console.log('🔧 Adding missing columns...')
       
       for (const col of missingColumns) {
-        await sql`ALTER TABLE settings ADD COLUMN ${sql(col)} TEXT`
+        await (sql as any)(`ALTER TABLE settings ADD COLUMN "${col}" TEXT`)
         console.log(`✅ Added ${col}`)
       }
     } else {

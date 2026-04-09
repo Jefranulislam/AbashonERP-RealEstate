@@ -50,9 +50,9 @@ export async function POST(request: NextRequest) {
     // Save file to local storage
     const filePath = path.join(uploadDir, filename)
     const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
+    const fileData = new Uint8Array(bytes)
 
-    await writeFile(filePath, buffer)
+    await writeFile(filePath, fileData)
     console.log(`[v0] File saved locally:`, filePath)
 
     // Return public URL

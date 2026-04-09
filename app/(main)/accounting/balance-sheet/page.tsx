@@ -343,13 +343,18 @@ export default function BalanceSheetPage() {
         <div className="hidden">
           <div id="print-balance-sheet-content">
             <BalanceSheetPDF
-              currentAssets={balanceSheet.currentAssets}
-              fixedAssets={balanceSheet.fixedAssets}
-              currentLiabilities={balanceSheet.currentLiabilities}
-              longTermLiabilities={balanceSheet.longTermLiabilities}
+              asOfDate={balanceSheet.asOnDate}
+              assets={{
+                currentAssets: balanceSheet.currentAssets,
+                fixedAssets: balanceSheet.fixedAssets,
+                totalAssets: balanceSheet.totals.totalAssets,
+              }}
+              liabilities={{
+                currentLiabilities: balanceSheet.currentLiabilities,
+                longTermLiabilities: balanceSheet.longTermLiabilities,
+                totalLiabilities: balanceSheet.totals.totalLiabilities,
+              }}
               equity={balanceSheet.equity}
-              totals={balanceSheet.totals}
-              asOnDate={balanceSheet.asOnDate}
               companyName={companySettings.company_name}
               companyAddress={companySettings.address}
               currencySymbol={companySettings.currency_symbol}

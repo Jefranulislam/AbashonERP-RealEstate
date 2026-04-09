@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs"
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getCurrentUser()
@@ -13,7 +13,7 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const userId = params.id
+    const userId = (await context.params).id
 
     const users = await sql`
       SELECT 
@@ -42,7 +42,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getCurrentUser()
@@ -50,7 +50,7 @@ export async function PUT(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const userId = params.id
+    const userId = (await context.params).id
     const body = await request.json()
     const { name, email, password, role, phone, is_active, permissions } = body
 
@@ -199,7 +199,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getCurrentUser()
@@ -207,7 +207,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const userId = params.id
+    const userId = (await context.params).id
 
     // Prevent deleting yourself
     if (userId === user.id) {

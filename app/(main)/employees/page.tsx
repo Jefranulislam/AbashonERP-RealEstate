@@ -33,6 +33,7 @@ interface Role {
   id: number
   role_name: string
   description: string
+  is_active?: boolean
 }
 
 export default function EmployeesPage() {

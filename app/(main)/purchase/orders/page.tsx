@@ -17,11 +17,12 @@ import {
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { Plus, Search, Trash2, Eye, Edit, FileText } from "lucide-react"
+import { Plus, Search, Trash2, Eye, Edit, FileText, Printer } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Info } from "lucide-react"
 import axios from "axios"
+import { useToast } from "@/hooks/use-toast"
 
 interface POItem {
   expenseHeadId: string
@@ -41,6 +42,7 @@ interface PaymentSchedule {
 }
 
 export default function PurchaseOrdersPage() {
+  const { toast } = useToast()
   const [orders, setOrders] = useState<any[]>([])
   const [vendors, setVendors] = useState<any[]>([])
   const [projects, setProjects] = useState<any[]>([])
@@ -55,6 +57,9 @@ export default function PurchaseOrdersPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [viewDialogOpen, setViewDialogOpen] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<any>(null)
+  const [isEditMode, setIsEditMode] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   
   const [formData, setFormData] = useState({
     vendorId: "",
@@ -94,6 +99,7 @@ export default function PurchaseOrdersPage() {
 
   const fetchOrders = async () => {
     try {
+      setLoading(true)
       const params = new URLSearchParams()
       if (search) params.append("search", search)
       if (filterStatus !== "all") params.append("status", filterStatus)
@@ -102,8 +108,18 @@ export default function PurchaseOrdersPage() {
 
       const response = await axios.get(`/api/purchase/orders?${params.toString()}`)
       setOrders(response.data.orders)
-    } catch (error) {
+      
+      toast({
+        title: "Orders Loaded",
+        description: `Found ${response.data.orders?.length || 0} purchase orders`,
+      })
+    } catch (error: any) {
       console.error("Error fetching purchase orders:", error)
+      toast({
+        title: "Error",
+        description: error.response?.data?.error || "Failed to load purchase orders",
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
     }
@@ -224,6 +240,13 @@ export default function PurchaseOrdersPage() {
     e.preventDefault()
     
     try {
+      setSubmitting(true)
+      
+      toast({
+        title: "Creating PO...",
+        description: "Processing your purchase order",
+      })
+      
       const orderData = {
         ...formData,
         items: items.map(item => ({
@@ -242,14 +265,25 @@ export default function PurchaseOrdersPage() {
         totalAmount: calculateTotal(),
       }
 
-      await axios.post("/api/purchase/orders", orderData)
+      const response = await axios.post("/api/purchase/orders", orderData)
+      
+      toast({
+        title: "Success",
+        description: `PO ${response.data.order.po_number} created successfully`,
+      })
       
       setDialogOpen(false)
       resetForm()
       fetchOrders()
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating purchase order:", error)
-      alert("Failed to create purchase order")
+      toast({
+        title: "Error",
+        description: error.response?.data?.error || "Failed to create purchase order",
+        variant: "destructive",
+      })
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -290,11 +324,209 @@ export default function PurchaseOrdersPage() {
 
   const handleViewOrder = async (order: any) => {
     try {
+      setLoading(true)
       const response = await axios.get(`/api/purchase/orders/${order.id}`)
       setSelectedOrder(response.data)
       setViewDialogOpen(true)
     } catch (error) {
       console.error("Error fetching order details:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load order details",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleEditOrder = async (order: any) => {
+    try {
+      setLoading(true)
+      const response = await axios.get(`/api/purchase/orders/${order.id}`)
+      setSelectedOrder(response.data)
+      setIsEditMode(true)
+      setViewDialogOpen(true)
+      
+      toast({
+        title: "Edit Mode",
+        description: "You can now edit this purchase order",
+      })
+    } catch (error) {
+      console.error("Error fetching order for edit:", error)
+      toast({
+        title: "Error",
+        description: "Failed to open edit mode",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDeleteOrder = async (order: any) => {
+    if (!confirm(`Are you sure you want to delete PO ${order.po_number}?`)) {
+      return
+    }
+
+    try {
+      setDeleting(true)
+      toast({
+        title: "Deleting...",
+        description: `Removing PO ${order.po_number}`,
+      })
+
+      await axios.delete(`/api/purchase/orders/${order.id}`)
+
+      toast({
+        title: "Success",
+        description: `PO ${order.po_number} has been deleted`,
+        variant: "default",
+      })
+
+      fetchOrders()
+    } catch (error: any) {
+      console.error("Error deleting order:", error)
+      toast({
+        title: "Error",
+        description: error.response?.data?.error || "Failed to delete purchase order",
+        variant: "destructive",
+      })
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const handlePrintOrder = (order: any) => {
+    try {
+      setLoading(true)
+      toast({
+        title: "Preparing Print",
+        description: `Generating PDF for PO ${order.po_number}`,
+      })
+
+      const printWindow = window.open("", "", "width=900,height=600")
+      if (!printWindow) {
+        toast({
+          title: "Error",
+          description: "Failed to open print window. Check popup blocker.",
+          variant: "destructive",
+        })
+        return
+      }
+
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>PO ${order.po_number}</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            .header { text-align: center; margin-bottom: 20px; }
+            .title { font-size: 24px; font-weight: bold; }
+            .subtitle { font-size: 14px; color: #666; }
+            .details { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
+            .detail-box { border: 1px solid #ddd; padding: 10px; }
+            .label { font-weight: bold; color: #555; }
+            table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+            th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+            th { background-color: #f5f5f5; }
+            .total-row { font-weight: bold; background-color: #f9f9f9; }
+            .footer { margin-top: 30px; border-top: 1px solid #ddd; padding-top: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="title">PURCHASE ORDER</div>
+            <div class="subtitle">PO #${order.po_number}</div>
+          </div>
+
+          <div class="details">
+            <div class="detail-box">
+              <div class="label">Vendor</div>
+              <div>${order.vendor_name}</div>
+              <div class="label" style="margin-top: 10px;">Order Date</div>
+              <div>${new Date(order.order_date).toLocaleDateString()}</div>
+            </div>
+            <div class="detail-box">
+              <div class="label">Project</div>
+              <div>${order.project_name}</div>
+              <div class="label" style="margin-top: 10px;">Expected Delivery</div>
+              <div>${new Date(order.expected_delivery_date).toLocaleDateString()}</div>
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Material</th>
+                <th>Specification</th>
+                <th>Qty</th>
+                <th>Unit</th>
+                <th>Rate</th>
+                <th>Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${order.items?.map((item: any) => `
+                <tr>
+                  <td>${item.material_type}</td>
+                  <td>${item.material_specification}</td>
+                  <td>${item.qty}</td>
+                  <td>${item.unit_of_measurement}</td>
+                  <td>৳${parseFloat(item.rate).toFixed(2)}</td>
+                  <td>৳${parseFloat(item.amount).toFixed(2)}</td>
+                </tr>
+              `).join('') || '<tr><td colspan="6">No items</td></tr>'}
+            </tbody>
+          </table>
+
+          <div style="text-align: right; width: 300px; margin-left: auto;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div class="label">Subtotal:</div>
+              <div>৳${parseFloat(order.subtotal || 0).toFixed(2)}</div>
+              <div class="label">Tax:</div>
+              <div>৳${parseFloat(order.tax || 0).toFixed(2)}</div>
+              <div class="label">Discount:</div>
+              <div>৳${parseFloat(order.discount || 0).toFixed(2)}</div>
+              <div class="total-row">Total:</div>
+              <div class="total-row">৳${parseFloat(order.total_amount || 0).toFixed(2)}</div>
+            </div>
+          </div>
+
+          <div class="footer">
+            <p style="font-size: 12px; color: #666;">
+              Status: ${order.status} | Payment Status: ${order.payment_status}
+            </p>
+            <p style="font-size: 12px; color: #999;">
+              Printed on ${new Date().toLocaleString()}
+            </p>
+          </div>
+
+          <script>
+            window.print();
+            setTimeout(() => window.close(), 100);
+          </script>
+        </body>
+        </html>
+      `
+
+      printWindow.document.write(htmlContent)
+      printWindow.document.close()
+
+      toast({
+        title: "Success",
+        description: "Print dialog opened",
+      })
+    } catch (error) {
+      console.error("Error printing order:", error)
+      toast({
+        title: "Error",
+        description: "Failed to prepare print document",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -726,7 +958,9 @@ export default function PurchaseOrdersPage() {
                 <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit">Create Purchase Order</Button>
+                <Button type="submit" disabled={submitting}>
+                  {submitting ? "Creating..." : "Create Purchase Order"}
+                </Button>
               </div>
             </form>
           </DialogContent>
@@ -857,8 +1091,34 @@ export default function PurchaseOrdersPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => handleViewOrder(order)}
+                          title="View"
                         >
                           <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEditOrder(order)}
+                          title="Edit"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handlePrintOrder(order)}
+                          title="Print"
+                        >
+                          <Printer className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteOrder(order)}
+                          disabled={deleting}
+                          title="Delete"
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </div>
                     </TableCell>

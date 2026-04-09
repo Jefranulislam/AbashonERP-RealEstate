@@ -21,7 +21,6 @@ interface TransactionLog {
   "Amount": string;
   "Inventory": string;
   "Account HEAD ID": string;
-  "Type": string;
   "Memo / Note/ Comments": string;
   "Vendor Name": string;
 }

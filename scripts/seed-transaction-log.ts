@@ -177,7 +177,7 @@ async function seedTransactionLog() {
         successCount++;
 
       } catch (error) {
-        console.error(`❌ Error processing record:`, record.description, error);
+        console.error(`❌ Error processing record:`, record.Decription, error);
         errorCount++;
       }
     }

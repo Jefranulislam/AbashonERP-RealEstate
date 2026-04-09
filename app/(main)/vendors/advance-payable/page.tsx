@@ -38,9 +38,12 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, Plus, Edit, Trash2, DollarSign } from "lucide-react"
+import { Loader2, Plus, Edit, Trash2, DollarSign, Printer } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { formatDistanceToNow } from "date-fns"
+import { VendorPayment } from "@/components/vendor-payment-corporate"
+import { printDocument, getCompanySettings } from "@/lib/pdf-utils"
+import { amountToWordsBDT, normalizePaymentMethod } from "@/lib/payment-utils"
 
 interface AdvancePayable {
   id: number
@@ -105,6 +108,9 @@ export default function AdvancePayablePage() {
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [selectedRecord, setSelectedRecord] = useState<AdvancePayable | null>(null)
+  const [printDialogOpen, setPrintDialogOpen] = useState(false)
+  const [selectedPayment, setSelectedPayment] = useState<AdvancePayable | null>(null)
+  const [companySettings, setCompanySettings] = useState<any>(null)
   const [formData, setFormData] = useState<FormData>({
     projectId: null,
     vendorId: null,
@@ -285,6 +291,32 @@ export default function AdvancePayablePage() {
       recipientType: record.vendor_id ? "vendor" : "constructor",
     })
     setEditOpen(true)
+  }
+
+  const handlePrint = (payment: AdvancePayable) => {
+    setSelectedPayment(payment)
+    setPrintDialogOpen(true)
+    fetchCompanySettings()
+  }
+
+  const fetchCompanySettings = async () => {
+    try {
+      const settings = await getCompanySettings()
+      setCompanySettings(settings)
+    } catch (error) {
+      console.error('Failed to fetch company settings:', error)
+      toast({
+        title: "Error",
+        description: "Failed to load company settings for printing",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const executePrint = () => {
+    setTimeout(() => {
+      printDocument('print-payment-content', `Vendor-Payment-${selectedPayment?.id}`)
+    }, 100)
   }
 
   const handleUpdate = async () => {
@@ -745,6 +777,9 @@ export default function AdvancePayablePage() {
                     <TableCell>{getStatusBadge(record.status)}</TableCell>
                     <TableCell>
                       <div className="flex gap-2">
+                        <Button size="sm" variant="ghost" onClick={() => handlePrint(record)}>
+                          <Printer className="h-4 w-4" />
+                        </Button>
                         <Button size="sm" variant="ghost" onClick={() => handleEdit(record)}>
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -765,6 +800,71 @@ export default function AdvancePayablePage() {
           </Table>
         </div>
       )}
+
+      {/* Print Dialog */}
+      {printDialogOpen && (
+        <Dialog open={printDialogOpen} onOpenChange={setPrintDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Print Vendor Payment Receipt</DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div className="text-center">
+                <div className="font-semibold">💳 Professional Payment Receipt</div>
+                <div className="text-sm text-muted-foreground">
+                  Corporate-style vendor payment confirmation
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Button onClick={executePrint} className="flex-1">
+                  🖨️ Print Receipt
+                </Button>
+                <Button variant="outline" onClick={() => setPrintDialogOpen(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Hidden Print Content */}
+      <div className="hidden">
+        {printDialogOpen && selectedPayment && companySettings && (
+          <div id="print-payment-content">
+            <VendorPayment
+              paymentNumber={`AP-${selectedPayment.id.toString().padStart(6, '0')}`}
+              date={new Date(selectedPayment.payment_date).toLocaleDateString()}
+              vendorName={selectedPayment.vendor_name || selectedPayment.constructor_name || 'Vendor'}
+              vendorAddress="Vendor Address" // To be enhanced with actual vendor data
+              vendorPhone="Vendor Phone"
+              vendorEmail="vendor@email.com"
+              amount={selectedPayment.amount}
+              amountInWords={amountToWordsBDT(selectedPayment.amount)}
+              description={selectedPayment.description || 'Advance Payment'}
+              paymentMethod={normalizePaymentMethod(selectedPayment.payment_method)}
+              chequeNumber={selectedPayment.reference_number}
+              bankName={selectedPayment.payment_method === 'Bank Transfer' ? 'Bank Name' : undefined}
+              billNumber={`AP-${selectedPayment.id}`}
+              memoNumber={selectedPayment.reference_number}
+              projectName={selectedPayment.project_name}
+              projectAddress="Project Address" // To be enhanced with actual project data
+              deliveryAddress="Delivery Address"
+              totalPaymentsToVendor={selectedPayment.amount}
+              paymentCount={1}
+              authorizedBy="Finance Department"
+              companyName={companySettings.company_name}
+              companyAddress={companySettings.address}
+              companyPhone={companySettings.phone || ''}
+              companyEmail={companySettings.email || ''}
+              companyLogo={companySettings.company_logo}
+              footerImage={companySettings.footer_image}
+            />
+          </div>
+        )}
+      </div>
 
       <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
         <h3 className="font-semibold text-blue-900 mb-2">Features:</h3>

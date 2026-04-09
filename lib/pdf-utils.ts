@@ -27,9 +27,9 @@ export async function getCompanySettings(): Promise<CompanySettings> {
       invoice_prefix: data.settings?.invoice_prefix || 'INV',
       currency_symbol: data.settings?.currency_symbol || '৳',
       print_on_company_pad: data.settings?.print_on_company_pad || false,
-      company_logo: data.settings?.company_logo || null,
-      footer_image: data.settings?.footer_image || null,
-      background_image: data.settings?.background_image || null,
+      company_logo: data.settings?.company_logo || undefined,
+      footer_image: data.settings?.footer_image || undefined,
+      background_image: data.settings?.background_image || undefined,
     }
   } catch (error) {
     console.error('Error fetching company settings:', error)
@@ -39,9 +39,9 @@ export async function getCompanySettings(): Promise<CompanySettings> {
       invoice_prefix: 'INV',
       currency_symbol: '৳',
       print_on_company_pad: false,
-      company_logo: null,
-      footer_image: null,
-      background_image: null,
+      company_logo: undefined,
+      footer_image: undefined,
+      background_image: undefined,
     }
   }
 }
@@ -49,7 +49,7 @@ export async function getCompanySettings(): Promise<CompanySettings> {
 /**
  * Trigger browser print dialog
  */
-export function printDocument(elementId: string) {
+export function printDocument(elementId: string, documentTitle = 'Print Document') {
   const printContent = document.getElementById(elementId)
   if (!printContent) {
     console.error('Print element not found')
@@ -79,12 +79,51 @@ export function printDocument(elementId: string) {
     <!DOCTYPE html>
     <html>
       <head>
-        <title>Print Document</title>
+        <title>${documentTitle}</title>
         <style>
           ${styles}
           @media print {
-            body { margin: 0; padding: 20px; }
-            @page { margin: 1cm; }
+            html, body {
+              margin: 0 !important;
+              padding: 0 !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            @page {
+              size: A4;
+              margin: 0;
+            }
+            /* Ensure table header/footer repeat on every page */
+            thead { display: table-header-group; }
+            tfoot { display: table-footer-group; }
+            .pdf-layout-table {
+              width: 100%;
+            }
+            .pdf-layout-table tbody tr {
+              page-break-inside: avoid;
+            }
+            /* Background image fixed on every page */
+            .pdf-bg-image {
+              position: fixed !important;
+              top: 0;
+              left: 0;
+              width: 210mm;
+              height: 297mm;
+              z-index: 0;
+              pointer-events: none;
+            }
+            /* Footer fixed at bottom of every page */
+            .pdf-footer-fixed {
+              position: fixed;
+              bottom: 0;
+              left: 0;
+              width: 100%;
+              z-index: 10;
+              background: white;
+            }
+            .pdf-footer-spacer {
+              height: 60px;
+            }
           }
         </style>
       </head>
@@ -97,11 +136,11 @@ export function printDocument(elementId: string) {
   windowPrint.document.close()
   windowPrint.focus()
   
-  // Wait for content to load before printing
+  // Wait for content and images to load before printing
   setTimeout(() => {
     windowPrint.print()
     windowPrint.close()
-  }, 250)
+  }, 500)
 }
 
 /**
@@ -119,12 +158,24 @@ export const pdfStyles = `
     .page-break {
       page-break-before: always;
     }
+    /* Repeat header & footer on every page */
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
     table {
       page-break-inside: auto;
     }
     tr {
       page-break-inside: avoid;
       page-break-after: auto;
+    }
+    .pdf-bg-image {
+      position: fixed !important;
+      top: 0;
+      left: 0;
+      width: 210mm;
+      height: 297mm;
+      z-index: 0;
+      pointer-events: none;
     }
   }
 `

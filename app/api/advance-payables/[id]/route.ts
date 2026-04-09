@@ -4,7 +4,7 @@ import { getCurrentUser } from "@/lib/auth"
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getCurrentUser()
@@ -12,7 +12,7 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const id = Number.parseInt(params.id)
+    const id = Number.parseInt((await context.params).id)
     const res = await sql`
       SELECT 
         ap.*, 
@@ -40,7 +40,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest, 
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getCurrentUser()
@@ -48,7 +48,7 @@ export async function PUT(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const id = Number.parseInt(params.id)
+    const id = Number.parseInt((await context.params).id)
     const data = await request.json()
 
     const res = await sql`
@@ -85,7 +85,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest, 
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getCurrentUser()
@@ -93,7 +93,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const id = Number.parseInt(params.id)
+    const id = Number.parseInt((await context.params).id)
     
     // Soft delete by setting is_active to false
     await sql`

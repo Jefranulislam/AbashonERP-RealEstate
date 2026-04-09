@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
         SELECT 
           v.*,
           p.project_name,
+          p.address as project_address,
           ieh.head_name as expense_head_name,
           bc.account_title as bank_cash_name,
           dr_bc.account_title as dr_bank_cash_name,
@@ -41,6 +42,7 @@ export async function GET(request: NextRequest) {
         SELECT 
           v.*,
           p.project_name,
+          p.address as project_address,
           ieh.head_name as expense_head_name,
           bc.account_title as bank_cash_name,
           dr_bc.account_title as dr_bank_cash_name,
@@ -59,6 +61,7 @@ export async function GET(request: NextRequest) {
         SELECT 
           v.*,
           p.project_name,
+          p.address as project_address,
           ieh.head_name as expense_head_name,
           bc.account_title as bank_cash_name,
           dr_bc.account_title as dr_bank_cash_name,
@@ -77,6 +80,7 @@ export async function GET(request: NextRequest) {
         SELECT 
           v.*,
           p.project_name,
+          p.address as project_address,
           ieh.head_name as expense_head_name,
           bc.account_title as bank_cash_name,
           dr_bc.account_title as dr_bank_cash_name,

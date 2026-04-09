@@ -1,0 +1,25 @@
+{
+  "target": "http://localhost:3000/login",
+  "connections": 30,
+  "duration": 20,
+  "requests": {
+    "average": 21.1,
+    "min": 2,
+    "max": 55,
+    "p99": 55
+  },
+  "latency": {
+    "average": 1373.79,
+    "min": 914,
+    "max": 6089,
+    "p99": 6075
+  },
+  "throughput": {
+    "average": 585637.6,
+    "min": 55521,
+    "max": 1526616
+  },
+  "errors": 0,
+  "timeouts": 0,
+  "non2xx": 0
+}

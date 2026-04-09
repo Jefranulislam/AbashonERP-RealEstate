@@ -171,7 +171,7 @@ export async function POST(request: NextRequest) {
         ${user.name || 'System'},
         ${data.paymentDate},
         ${data.paymentStatus || 'Completed'},
-        ${user.id || null},
+        ${data.verifiedBy || null},
         ${new Date().toISOString().split('T')[0]},
         ${data.remarks || null},
         ${data.attachments || null}
@@ -191,7 +191,7 @@ export async function POST(request: NextRequest) {
       ) VALUES (
         ${payment[0].id},
         'Created',
-        ${user.id || null},
+        ${null},
         ${data.amount},
         ${data.paymentStatus || 'Completed'},
         'Payment created'

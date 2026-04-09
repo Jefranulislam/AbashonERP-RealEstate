@@ -189,9 +189,9 @@ export async function sendSMS(params: SendSMSParams): Promise<{ success: boolean
   }
 
   // Get message (from template or direct)
-  let message = directMessage
+  let message: string | undefined = directMessage ?? undefined
   if (!message && templateType) {
-    message = await getTemplateMessage(templateType, variables)
+    message = (await getTemplateMessage(templateType, variables)) ?? undefined
   }
 
   if (!message) {

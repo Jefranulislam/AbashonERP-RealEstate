@@ -24,6 +24,7 @@ import { Info } from "lucide-react"
 import axios from "axios"
 
 export default function MaterialDeliveriesPage() {
+  const [isClient, setIsClient] = useState(false)
   const [deliveries, setDeliveries] = useState<any[]>([])
   const [purchaseOrders, setPurchaseOrders] = useState<any[]>([])
   const [projects, setProjects] = useState<any[]>([])
@@ -39,8 +40,8 @@ export default function MaterialDeliveriesPage() {
 
   const [formData, setFormData] = useState({
     purchaseOrderId: "",
-    deliveryDate: new Date().toISOString().split("T")[0],
-    deliveryTime: new Date().toTimeString().split(" ")[0].substring(0, 5),
+    deliveryDate: "",
+    deliveryTime: "",
     deliverySlipNumber: "",
     vehicleNumber: "",
     driverName: "",
@@ -54,6 +55,9 @@ export default function MaterialDeliveriesPage() {
   })
 
   const [deliveryItems, setDeliveryItems] = useState<any[]>([])
+
+  const getTodayDate = () => new Date().toISOString().split("T")[0]
+  const getCurrentTime = () => new Date().toTimeString().split(" ")[0].substring(0, 5)
 
   const fetchDeliveries = async () => {
     try {
@@ -74,14 +78,18 @@ export default function MaterialDeliveriesPage() {
   const fetchData = async () => {
     try {
       const [posRes, projectsRes, employeesRes] = await Promise.all([
-        axios.get("/api/purchase/orders?status=Approved"),
+        axios.get("/api/purchase/orders"),
         axios.get("/api/projects"),
         axios.get("/api/employees"),
       ])
 
-      setPurchaseOrders(posRes.data.orders || [])
-      setProjects(projectsRes.data.projects || [])
-      setEmployees(employeesRes.data.employees || [])
+      const poList = Array.isArray(posRes.data) ? posRes.data : posRes.data.orders || []
+      const projectsList = Array.isArray(projectsRes.data) ? projectsRes.data : projectsRes.data.projects || []
+      const employeesList = Array.isArray(employeesRes.data) ? employeesRes.data : employeesRes.data.employees || []
+
+      setPurchaseOrders(poList)
+      setProjects(projectsList)
+      setEmployees(employeesList)
     } catch (error) {
       console.error("Error fetching data:", error)
     }
@@ -92,6 +100,15 @@ export default function MaterialDeliveriesPage() {
   }, [search, filterStatus, filterProject])
 
   useEffect(() => {
+    setIsClient(true)
+    setFormData((prev) => ({
+      ...prev,
+      deliveryDate: getTodayDate(),
+      deliveryTime: getCurrentTime(),
+    }))
+  }, [])
+
+  useEffect(() => {
     fetchData()
   }, [])
 
@@ -100,10 +117,13 @@ export default function MaterialDeliveriesPage() {
     
     try {
       const response = await axios.get(`/api/purchase/orders/${poId}`)
-      setSelectedPO(response.data)
+      const order = response.data?.order || response.data
+      const items = response.data?.items || []
+
+      setSelectedPO(order)
       
       // Initialize delivery items from PO items
-      const items = response.data.items.map((item: any) => ({
+      const normalizedItems = items.map((item: any) => ({
         poItemId: item.id,
         expenseHeadName: item.expense_head_name,
         materialType: item.material_type,
@@ -118,7 +138,7 @@ export default function MaterialDeliveriesPage() {
         shortageQty: "",
         excessQty: "",
       }))
-      setDeliveryItems(items)
+      setDeliveryItems(normalizedItems)
     } catch (error) {
       console.error("Error fetching PO details:", error)
     }
@@ -185,8 +205,8 @@ export default function MaterialDeliveriesPage() {
   const resetForm = () => {
     setFormData({
       purchaseOrderId: "",
-      deliveryDate: new Date().toISOString().split("T")[0],
-      deliveryTime: new Date().toTimeString().split(" ")[0].substring(0, 5),
+      deliveryDate: getTodayDate(),
+      deliveryTime: getCurrentTime(),
       deliverySlipNumber: "",
       vehicleNumber: "",
       driverName: "",
@@ -220,6 +240,10 @@ export default function MaterialDeliveriesPage() {
       case "Pending": return "secondary"
       default: return "default"
     }
+  }
+
+  if (!isClient) {
+    return <div className="p-6">Loading...</div>
   }
 
   return (

@@ -12,7 +12,8 @@ if (!process.env.DATABASE_URL) {
   process.exit(1)
 }
 
-const sql = neon(process.env.DATABASE_URL)
+const databaseUrl = process.env.DATABASE_URL as string
+const sql = neon(databaseUrl)
 
 async function verifyTables() {
   console.log("🔍 Checking RBAC tables...\n")
@@ -60,7 +61,7 @@ async function verifyTables() {
 
     console.log("\n✅ All RBAC tables verified successfully!")
     console.log("\n🌐 DATABASE_URL being used:")
-    console.log(`   ${process.env.DATABASE_URL.substring(0, 50)}...`)
+    console.log(`   ${databaseUrl.substring(0, 50)}...`)
 
   } catch (error: any) {
     console.error("\n❌ Error verifying tables:", error.message)

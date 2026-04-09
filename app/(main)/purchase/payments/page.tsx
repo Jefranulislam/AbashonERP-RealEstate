@@ -25,6 +25,7 @@ import axios from "axios"
 import { Switch } from "@/components/ui/switch"
 
 export default function PaymentTransactionsPage() {
+  const [isClient, setIsClient] = useState(false)
   const [payments, setPayments] = useState<any[]>([])
   const [purchaseOrders, setPurchaseOrders] = useState<any[]>([])
   const [vendors, setVendors] = useState<any[]>([])
@@ -41,11 +42,13 @@ export default function PaymentTransactionsPage() {
   const [selectedPayment, setSelectedPayment] = useState<any>(null)
   const [selectedPO, setSelectedPO] = useState<any>(null)
 
+  const getTodayDate = () => new Date().toISOString().split("T")[0]
+
   const [formData, setFormData] = useState({
     purchaseOrderId: "",
     vendorId: "",
     projectId: "",
-    paymentDate: new Date().toISOString().split("T")[0],
+    paymentDate: "",
     paymentType: "Partial",
     paymentMethod: "Bank Transfer",
     bankAccountId: "",
@@ -88,11 +91,17 @@ export default function PaymentTransactionsPage() {
         axios.get("/api/finance/bank-cash"),
       ])
 
-      setPurchaseOrders(posRes.data.orders || [])
-      setVendors(vendorsRes.data.vendors || [])
-      setProjects(projectsRes.data.projects || [])
-      setEmployees(employeesRes.data.employees || [])
-      setBankAccounts(bankAccountsRes.data.accounts || [])
+      const poList = Array.isArray(posRes.data) ? posRes.data : posRes.data.orders || []
+      const vendorsList = Array.isArray(vendorsRes.data) ? vendorsRes.data : vendorsRes.data.vendors || []
+      const projectsList = Array.isArray(projectsRes.data) ? projectsRes.data : projectsRes.data.projects || []
+      const employeesList = Array.isArray(employeesRes.data) ? employeesRes.data : employeesRes.data.employees || []
+      const bankList = bankAccountsRes.data.bankCashAccounts || bankAccountsRes.data.accounts || []
+
+      setPurchaseOrders(poList)
+      setVendors(vendorsList)
+      setProjects(projectsList)
+      setEmployees(employeesList)
+      setBankAccounts(bankList)
     } catch (error) {
       console.error("Error fetching data:", error)
     }
@@ -106,20 +115,29 @@ export default function PaymentTransactionsPage() {
     fetchData()
   }, [])
 
+  useEffect(() => {
+    setIsClient(true)
+    setFormData((prev) => ({
+      ...prev,
+      paymentDate: getTodayDate(),
+    }))
+  }, [])
+
   const handlePOChange = async (poId: string) => {
     setFormData({ ...formData, purchaseOrderId: poId })
 
     try {
       const response = await axios.get(`/api/purchase/orders/${poId}`)
-      setSelectedPO(response.data)
+      const order = response.data?.order || response.data
+      setSelectedPO(order)
       
       // Pre-fill vendor and project
-      setFormData({
-        ...formData,
+      setFormData((prev) => ({
+        ...prev,
         purchaseOrderId: poId,
-        vendorId: response.data.vendor_id?.toString() || "",
-        projectId: response.data.project_id?.toString() || "",
-      })
+        vendorId: order?.vendor_id?.toString() || "",
+        projectId: order?.project_id?.toString() || "",
+      }))
     } catch (error) {
       console.error("Error fetching PO details:", error)
     }
@@ -137,8 +155,20 @@ export default function PaymentTransactionsPage() {
 
     try {
       const paymentData = {
-        ...formData,
-        amount: parseFloat(formData.amount),
+        poId: formData.purchaseOrderId ? parseInt(formData.purchaseOrderId) : null,
+        poNumber: selectedPO?.po_number || null,
+        vendorId: formData.vendorId ? parseInt(formData.vendorId) : null,
+        projectId: formData.projectId ? parseInt(formData.projectId) : null,
+        paymentDate: formData.paymentDate,
+        paymentType: formData.paymentType,
+        paymentMethod: formData.paymentMethod,
+        bankAccountId: formData.bankAccountId ? parseInt(formData.bankAccountId) : null,
+        chequeNumber: formData.chequeNumber || null,
+        chequeDate: formData.chequeDate || null,
+        transactionReference: formData.referenceNumber || null,
+        remarks: formData.paymentRemarks || null,
+        paymentStatus: "Completed",
+        amount: formData.amount ? parseFloat(formData.amount) : 0,
         createVoucher: formData.createVoucher,
       }
 
@@ -159,7 +189,7 @@ export default function PaymentTransactionsPage() {
       purchaseOrderId: "",
       vendorId: "",
       projectId: "",
-      paymentDate: new Date().toISOString().split("T")[0],
+      paymentDate: getTodayDate(),
       paymentType: "Partial",
       paymentMethod: "Bank Transfer",
       bankAccountId: "",
@@ -200,6 +230,10 @@ export default function PaymentTransactionsPage() {
       case "Due Settlement": return "default"
       default: return "secondary"
     }
+  }
+
+  if (!isClient) {
+    return <div className="p-6">Loading...</div>
   }
 
   return (
@@ -360,7 +394,7 @@ export default function PaymentTransactionsPage() {
                         <SelectContent>
                           {bankAccounts.map((account) => (
                             <SelectItem key={account.id} value={account.id.toString()}>
-                              {account.account_name} ({account.account_type})
+                              {account.account_title} {account.description ? `(${account.description})` : ""}
                             </SelectItem>
                           ))}
                         </SelectContent>
