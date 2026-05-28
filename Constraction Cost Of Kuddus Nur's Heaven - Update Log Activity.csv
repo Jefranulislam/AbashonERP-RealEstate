@@ -5,7 +5,7 @@ Date(D-M-Y),PROJECT,Decription,Type,Qty,Rate,Amount,Inventory,ACCOUNT HEAD,Memo 
 4/11/2024,Kuddus Nur's Heaven,Registry Cost,Credit,,,220000,,Legal & Audit,,
 1/4/2025,Kuddus Nur's Heaven,Bounday Cost + Gate,Credit,,,100000,,General Expense,,
 21/04/2025,Kuddus Nur's Heaven,Non Refandable,Credit,,,500000,,Land Signing Money,,
-8/5/2025,Kuddus Nur's Heaven,Esrat Jahan Booking 5-B,Debit,1,,1000000,,Apartment Sales,,
+8/5/2025,Kuddus Nur's Heaven,Esrat Jahan Booking 5-B,Debit,1,,1000000,,Apartment Sales,452,
 10/5/2025,Kuddus Nur's Heaven,Electriciy Meter Purpose,Credit,,,10000,,"Utilities (Electricity, Internet)",,
 13/05/2025,Kuddus Nur's Heaven,Extra Media Cost,Credit,,,500000,,"Utilities (Electricity, Internet)",,
 13/05/2025,Kuddus Nur's Heaven,Wasa Bill Cost,Credit,2 Mounths,,2095,,"Utilities (Electricity, Internet)",,
@@ -118,7 +118,7 @@ Date(D-M-Y),PROJECT,Decription,Type,Qty,Rate,Amount,Inventory,ACCOUNT HEAD,Memo 
 21/10/2025,Kuddus Nur's Heaven,Pilling Constraction 30th Finished,Credit,,,10000,,Piling Construction,Bank Transfer Brac Bank,Rotary Pilling
 23/10/2025,Kuddus Nur's Heaven,Pilling Constraction 31th Finished,Credit,,,10000,,Piling Construction,Bank Transfer Brac Bank,Rotary Pilling
 24/10/2025,Kuddus Nur's Heaven,Pilling Constraction 32th Finished,Credit,,,10000,,Piling Construction,Bank Transfer Brac Bank,Rotary Pilling
-24/10/2025,Kuddus Nur's Heaven,2 Ton Stone,Credit,,,8200,2,Stone Purchase,,SS Trading 
+24/10/2025,Kuddus Nur's Heaven,2 Ton Stone,Credit,,,8200,2,Stone Purchase,81493,SS Trading 
 25/10/2025,Kuddus Nur's Heaven,Engineer Visit,Credit,,,2000,,Engineer/Consultant Fee,,
 30/10/2025,Kuddus Nur's Heaven,PIlling Constraction,Credit,,,20000,,Piling Construction,Bank Transfer Brac Bank,Rotary Pilling
 5/11/2025,Kuddus Nur's Heaven,Carring Cost 1500 taka extra ,Credit,,,3000,,Transportation/Carrying Cost,,KAJI MOHAMMAD
@@ -149,17 +149,18 @@ Hojur: 1,000",Credit,,,13340,,General Expense,,
 6/12/2025,Kuddus Nur's Heaven,steel 20mm 2 ton 12mm 500kg total 1386,Credit,1386,88.5 + 2239,124900,,Steel/Rod Purchase,DUE ,M/s Aziz Trading
 6/12/2025,Kuddus Nur's Heaven,Aggregate 100ft,Credit,,,13000,,Aggregate Purchase,,
 6/12/2025,Kuddus Nur's Heaven,Holegen Light 1350 + 500 for  light platte + logistic ,Credit,,,2150,,"Utilities (Electricity, Internet)",,
-7/12/2025,Kuddus Nur's Heaven,Stone 15tone,Credit,,,66420,15.27,Stone Purchase,,SS Trading 
+7/12/2025,Kuddus Nur's Heaven,Stone 15tone,Credit,,,66420,15.27,Stone Purchase,"962,199,621,696,223",SS Trading 
 7/12/2025,Kuddus Nur's Heaven,Arshadul Boksis + silicion Sand,Credit,,,300,,Bonus,,
 7/12/2025,Kuddus Nur's Heaven,Belal Hossain ,Debit,,,120000,,Apartment Sales,,
 10/12/2025,Kuddus Nur's Heaven,Working State Payment For Constraction,Credit,,,50000,,Contractor Bill,by cash in office,
 28/11/2025,Kuddus Nur's Heaven,Engineer Visit,Credit,,,2000,,Engineer/Consultant Fee,,
-2/13/2025,Kuddus Nur's Heaven,Engineer Visit,Credit,,,2000,,Engineer/Consultant Fee,,
-8/14/2025,Kuddus Nur's Heaven,Engineer Visit,Credit,,,2000,,Engineer/Consultant Fee,,
+2/12/2025,Kuddus Nur's Heaven,Engineer Visit,Credit,,,2000,,Engineer/Consultant Fee,,
+8/12/2025,Kuddus Nur's Heaven,Engineer Visit,Credit,,,2000,,Engineer/Consultant Fee,,
+9/12/2025,Kuddus Nur's Heaven,CDA enginner visit with ghus,Credit,,,15000,,Engineer/Consultant Fee,,
 12/12/2025,Kuddus Nur's Heaven,extra provide boksis to 4th   men on site,Credit,,,500,,Bonus,,
 14/12/2025,Kuddus Nur's Heaven,4 time stone Carring Cost,Credit,,,6100,,Transportation/Carrying Cost,,KAJI MOHAMMAD
 14/12/2025,Kuddus Nur's Heaven,"Mati Kata , Carring and posting",Credit,,,7650,,Labour Payment,,
-17/12/2025,Kuddus Nur's Heaven,Electric Cost,Credit,,,4500,,"Utilities (Electricity, Internet)",,
+17/12/2025,Kuddus Nur's Heaven,Electric Cost,Credit,,,4500,,"Utilities (Electricity, Internet)",3359-1152-3179-5648-3384 10 number,
 18/12/2025,Kuddus Nur's Heaven,150ft aggregrate ,Credit,150,120,18000,150,Aggregate Purchase,,
 18/12/2025,Kuddus Nur's Heaven,aggregreate  load & driver,Credit,,,1700,,Transportation/Carrying Cost,Not kaji,KAJI MOHAMMAD
 18/12/2025,Kuddus Nur's Heaven,3000 pc Bricks + Load Unload + Driver ,Credit,,,35100,,Bricks Purchase,,
@@ -177,3 +178,57 @@ Hojur: 1,000",Credit,,,13340,,General Expense,,
 04/01/2026,Kuddus Nur's Heaven,Constraction Nurul islam - CASH ,Credit,,,50000,,Contractor Bill,,
 08/01/2026,Kuddus Nur's Heaven,5 stone ,Credit,,,20760,,Stone Purchase,,SS Trading 
 08/01/2026,Kuddus Nur's Heaven,1 gari Balu,Credit,320,,4600,,Sand Purchase,UNPAID,Bismillah Suppliers
+12/01/2026,Kuddus Nur's Heaven,2 round kaji,Credit,2,1500,3000,,Transportation/Carrying Cost,260123095092,KAJI MOHAMMAD
+15/01/2026,Kuddus Nur's Heaven,pamp fix ,Credit,,,750,,Bonus,,
+17/01/2026,Kuddus Nur's Heaven,5 ton stone,Credit,4200,,2100,,Stone Purchase,103842,SS Trading 
+17/01/2026,Kuddus Nur's Heaven,Stone Carring Cost ,Credit,1500,1,1500,,Transportation/Carrying Cost,,
+19/01/2026,Kuddus Nur's Heaven,5 ton stone,Credit,4200,5,21000,,Stone Purchase,103127,SS Trading 
+19/01/2026,Kuddus Nur's Heaven,Stone Carring Cost ,Credit,1500,1,1500,,Transportation/Carrying Cost,,
+26/01/2026,Kuddus Nur's Heaven,5 ton stone,Credit,4200,5,21000,,Stone Purchase,106285,SS Trading 
+22/01/2026,Kuddus Nur's Heaven,96 kg 800 12mm Rod - 7750 + carring Cost 250 - GPH Ispat 600,Credit,96.8,80,8000,,Steel/Rod Purchase,"1340 , M/S, Tanvir Enterprise",
+27/01/2026,Kuddus Nur's Heaven,25 Bag Daimond Cement + Carring Cost Load/Unload,Credit,500,25,12515,,Cement Purchase,Mina Corporation ,
+30/01/2026,Kuddus Nur's Heaven,5 ton Stone,Credit,5,,21000,,Stone Purchase,111402,SS Trading 
+31/01/2026,Kuddus Nur's Heaven,Electric Meter ,Credit,,,3450,,"Utilities (Electricity, Internet)",6948-1554-8960-5301-3559 11Number,
+09/02/2026,Kuddus Nur's Heaven,6 ton Stone ,Credit,6,4250,26000,,Stone Purchase,,SS Trading 
+15/02/2026,Kuddus Nur's Heaven,100 ft aggreatea  with carring cost,Credit,100,120,13400,,Aggregate Purchase,Allauddin - Bismillah Enterprise,
+15/02/2026,Kuddus Nur's Heaven,Balu 300 ft 3 times,Credit,4400,3,13200,,Sand Purchase,Bismillah ,Bismillah Suppliers
+14/02/2026,Kuddus Nur's Heaven,stone 5 ton,Credit,,,21100,,Stone Purchase,111135,SS Trading 
+15/02/2026,Kuddus Nur's Heaven,Carring Cost 6 but we paid for 5 times,Credit,5,1500,7500,,Transportation/Carrying Cost,Kaji ,KAJI MOHAMMAD
+22/02/2026,Kuddus Nur's Heaven,10 ton Stone,Credit,10,4550,45500,,Stone Purchase,"101,249,101,241",
+15/02/2026,Kuddus Nur's Heaven,"Rod -20MM 36 piece, 12mm 4 piece + 603 + 2400 delivery and unload",Credit,2462,83.5,205577,,Steel/Rod Purchase,"7525 delivery slip, 7170 memo",M/s Aziz Trading
+14/02/2026,Kuddus Nur's Heaven,100 Bag Cement,Credit,100,490,49000,,Cement Purchase,7170 memo.,M/s Aziz Trading
+14/02/2026,Kuddus Nur's Heaven,400FT stone Bhanga as Aggrerate ,Credit,400,35,14500,,Aggregate Purchase,,Brothers Enterprise
+28/02/2026,Kuddus Nur's Heaven,5 ton Stone,Credit,5,4550,22770,,Stone Purchase,115254/17,SS Trading 
+28/02/2026,Kuddus Nur's Heaven,Balu 200 ft,Credit,,,4600,,Sand Purchase,,Bismillah Suppliers
+05/03/2026,Kuddus Nur's Heaven,5 ton Stone,Credit,5,4550,23010,,Stone Purchase,117525,SS Trading 
+06/03/2026,Kuddus Nur's Heaven,Carrying Cost ,Credit,3,1500,4500,,Transportation/Carrying Cost,,KAJI MOHAMMAD
+06/03/2026,Kuddus Nur's Heaven,Holegen Light 1200x2=2400 + 1600 = 4000  + 50ft wire 25 taka 50X25 = 1250 + logistic ,Credit,,,5300,,"Utilities (Electricity, Internet)",,
+06/03/2026,Kuddus Nur's Heaven,Holegin light fitting + extra 2pin charge,Credit,,,570,,"Utilities (Electricity, Internet)",,
+10/03/2026,Kuddus Nur's Heaven,20MM Rod Cutpis 506.20 KG with Labour Cost & driver cost,Credit,506.2,90,46300,,Steel/Rod Purchase,1678,T S IRON MART
+16/03/2026,Kuddus Nur's Heaven,balu + balu loding 4300 ,Credit,,,4600,,Sand Purchase,,Bismillah Suppliers
+16/03/2026,Kuddus Nur's Heaven,50 bag Cement,Credit,,,24000,,Cement Purchase,,Bismillah Suppliers
+16/03/2026,Kuddus Nur's Heaven,CC TV new Purchase 40m+2.5MM camera with labour Cost ,Credit,,,3700,,"Utilities (Electricity, Internet)",,
+16/03/2026,Kuddus Nur's Heaven,Arshadul Bouns and extra 500,Credit,,,5000,,Bonus,,
+17/03/2026,Kuddus Nur's Heaven,100ft aggregrate with delivery charge,Credit,100,,9710,,Aggregate Purchase,,
+17/03/2026,Kuddus Nur's Heaven,"Stone 5 Ton, 3/4 bolder dubai stone, carring Cost soho 23000+2000",Credit,5,,25000,,Stone Purchase,"STONE ZONE Soltgola Mor theke , 4220",STONE ZONE
+18/03/2026,Kuddus Nur's Heaven,"Arshadul, Jewel, extra Eid Bonus",Credit,,,6500,,Bonus,eid bouns 2026,
+05/04/2026,Kuddus Nur's Heaven,"10mm-33 bundle, 12mm 4 bundle - load+ delivery",Credit,2638,92.8,247781,,Stone Purchase,delivery slip 2724  and memo 7509,M/s Aziz Trading
+05/04/2026,Kuddus Nur's Heaven,"BSRM - 20mm 25 bundle 1487kg , 10mm - 331kg +  load - reciveing ",Credit,1818.8,97.8,180479,,Steel/Rod Purchase,"memo 7509, ",M/s Aziz Trading
+08/04/2026,Kuddus Nur's Heaven,12mm rod  + delivery,Credit,365,92.8,34480,,Steel/Rod Purchase,7509,M/s Aziz Trading
+09/04/2026,Kuddus Nur's Heaven,lighting instoments 4480 with carring and delivery cost,Credit,,,5000,,"Utilities (Electricity, Internet)",,
+09/04/2026,Kuddus Nur's Heaven,Eletricity 5000 meter token ,Credit,,,5000,,"Utilities (Electricity, Internet)",5866-6085-0979-7438-8541 12 num,
+10/04/2026,Kuddus Nur's Heaven,Stone 9.09 Tone,Credit,,,50000,,Stone Purchase,,STONE ZONE
+10/04/2026,Kuddus Nur's Heaven,Slicition Sand 300ft,Credit,,,11500,,Silicon Sand Purchase,,STONE ZONE
+11/04/2026,Kuddus Nur's Heaven,"Balu total 3 gari, 600+ 400 ft",Credit,22/23,400/600,22400,,Cement Purchase,33,Bismillah Suppliers
+08/04/2026,Kuddus Nur's Heaven,Bricks 15000 for agggragare for 1st slab dhalai,Credit,8800,15,156000,,Bricks Purchase,,M Forkan Uddin CHowdhury
+11/04/2026,Kuddus Nur's Heaven,Bricks breaks into AGgrearate ,Credit,,,10500,,Bricks Purchase,,
+11/04/2026,Kuddus Nur's Heaven,engineering Visit 2 times 2 days after check the labeling,Credit,2,2000,4000,,Engineer/Consultant Fee,,
+13/04/2026,Kuddus Nur's Heaven,20mm Rod ,Credit,1358.7,,127000,,Steel/Rod Purchase,,Bhai Bhai Iron Mart
+19/04/2026,Kuddus Nur's Heaven,40 Bag Cement,Credit,,,21600,,Cement Purchase,,Md tarikul islam
+19/04/2026,Kuddus Nur's Heaven,12MM Rod 295 KG,Credit,,,"28,208.00",,Steel/Rod Purchase,,Bhai Bhai Iron Mart
+02/05/2026,Kuddus Nur's Heaven,"BSRM 20MM  24 bandle, 10MM 4 bundle",Credit,1725,92.8,1725,,Steel/Rod Purchase,7551,M/s Aziz Trading
+17/04/2026,Kuddus Nur's Heaven,200ft stone sylhet,Credit,200,,"54,600.00",,Stone Purchase,,STONE ZONE
+07/05/2026,Kuddus Nur's Heaven,5 Bag Cement,Credit,,,,,Cement Purchase,,
+06/05/2025,Kuddus Nur's Heaven,"Eletricity , pamp position change , Charge",Credit,,,,,"Utilities (Electricity, Internet)",,
+06/05/2026,Kuddus Nur's Heaven,3 ton Steel,Credit,3000,88,"2,65,500.00",,Steel/Rod Purchase,,Sheema Automatic ReRolling Mills Ltd
+07/05/2026,Kuddus Nur's Heaven,Steel Caring Cost,Credit,,,5300,,Transportation/Carrying Cost,1849266981,

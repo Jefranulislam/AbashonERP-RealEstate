@@ -149,13 +149,13 @@ export default function JournalVoucherPage() {
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <div className={`flex items-center justify-center gap-2 p-3 rounded-lg $${
+              <div className={`flex items-center justify-center gap-2 p-3 rounded-lg ${
                 isBalanced 
                   ? "bg-green-50 border border-green-200" 
                   : "bg-yellow-50 border border-yellow-200"
               }`}>
                 <Scale className={`h-5 w-5 ${isBalanced ? "text-green-600" : "text-yellow-600"}`} />
-                <span className={`font-medium $${isBalanced ? "text-green-700" : "text-yellow-700"}`}>
+                <span className={`font-medium ${isBalanced ? "text-green-700" : "text-yellow-700"}`}>
                   {isBalanced 
                     ? ` Balanced (Dr: ${drAmount.toLocaleString()} = Cr: ${crAmount.toLocaleString()})` 
                     : ` Not Balanced (Dr: ${drAmount.toLocaleString()}  Cr: ${crAmount.toLocaleString()})`

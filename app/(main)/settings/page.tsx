@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -20,7 +21,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2, Upload, X, Image as ImageIcon } from "lucide-react"
+import { Loader2, Upload, X, ShieldAlert } from "lucide-react"
 
 interface Settings {
   id?: number
@@ -62,6 +63,8 @@ export default function SettingsPage() {
   // Load existing settings
   useEffect(() => {
     fetchSettings()
+    fetchAdminAccess()
+    fetchProjects()
   }, [])
 
   const fetchSettings = async () => {
@@ -110,6 +113,91 @@ export default function SettingsPage() {
   }
 
   const [uploading, setUploading] = useState<{[key: string]: boolean}>({})
+  const [isAdminActionsEnabled, setIsAdminActionsEnabled] = useState(false)
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [projects, setProjects] = useState<any[]>([])
+  const [selectedProjectId, setSelectedProjectId] = useState("")
+  const [confirmText, setConfirmText] = useState("")
+  const [actionResult, setActionResult] = useState("")
+
+  const fetchAdminAccess = async () => {
+    try {
+      const response = await fetch("/api/settings/admin-actions")
+      const data = await response.json()
+      setIsAdminActionsEnabled(Boolean(data?.isAdmin))
+    } catch (error) {
+      setIsAdminActionsEnabled(false)
+    }
+  }
+
+  const fetchProjects = async () => {
+    try {
+      const response = await fetch("/api/projects")
+      const data = await response.json()
+      setProjects(data.projects || [])
+    } catch (error) {
+      setProjects([])
+    }
+  }
+
+  const runAdminAction = async (action: "delete_all_vouchers" | "delete_project_vouchers" | "cancel_all_sale_payments") => {
+    if (confirmText !== "CONFIRM DELETE") {
+      toast({
+        title: "Confirmation required",
+        description: 'Type "CONFIRM DELETE" first',
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (action === "delete_project_vouchers" && !selectedProjectId) {
+      toast({
+        title: "Project required",
+        description: "Select a project for project-wise voucher deletion",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      setActionLoading(action)
+      setActionResult("")
+
+      const response = await fetch("/api/settings/admin-actions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action,
+          projectId: selectedProjectId ? Number(selectedProjectId) : undefined,
+          confirmText,
+        }),
+      })
+
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || "Action failed")
+      }
+
+      const details = data.details ? JSON.stringify(data.details, null, 2) : ""
+      setActionResult(`${data.message}\n${details}`.trim())
+      setConfirmText("")
+
+      toast({
+        title: "Action completed",
+        description: data.message,
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Action failed"
+      setActionResult(`Error: ${message}`)
+      toast({
+        title: "Action failed",
+        description: message,
+        variant: "destructive",
+      })
+    } finally {
+      setActionLoading(null)
+    }
+  }
 
   const compressImage = (file: File, maxWidth = 800, quality = 0.8): Promise<File> => {
     return new Promise((resolve) => {
@@ -295,6 +383,9 @@ export default function SettingsPage() {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Company Settings</h1>
+        <Button variant="outline" asChild>
+          <Link href="/settings/imports">Open Import Center</Link>
+        </Button>
       </div>
 
       <Card>
@@ -578,6 +669,79 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {isAdminActionsEnabled && (
+        <Card className="mt-6 border-red-300">
+          <CardHeader>
+            <CardTitle className="text-red-700 flex items-center gap-2">
+              <ShieldAlert className="h-5 w-5" />
+              Admin Access: Dangerous Actions
+            </CardTitle>
+            <CardDescription>
+              These actions are destructive and should be used only for controlled cleanup.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Type confirmation text</Label>
+              <Input
+                placeholder='Type: CONFIRM DELETE'
+                value={confirmText}
+                onChange={(e) => setConfirmText(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Project (for project-wise voucher deletion)</Label>
+              <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select project" />
+                </SelectTrigger>
+                <SelectContent>
+                  {projects.map((project: any) => (
+                    <SelectItem key={project.id} value={String(project.id)}>
+                      {project.project_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-2 md:grid-cols-3">
+              <Button
+                variant="destructive"
+                disabled={actionLoading !== null}
+                onClick={() => runAdminAction("delete_all_vouchers")}
+              >
+                {actionLoading === "delete_all_vouchers" ? "Processing..." : "Delete All Vouchers"}
+              </Button>
+
+              <Button
+                variant="destructive"
+                disabled={actionLoading !== null}
+                onClick={() => runAdminAction("delete_project_vouchers")}
+              >
+                {actionLoading === "delete_project_vouchers" ? "Processing..." : "Delete Project Vouchers"}
+              </Button>
+
+              <Button
+                variant="destructive"
+                disabled={actionLoading !== null}
+                onClick={() => runAdminAction("cancel_all_sale_payments")}
+              >
+                {actionLoading === "cancel_all_sale_payments" ? "Processing..." : "Cancel All Sale Payments"}
+              </Button>
+            </div>
+
+            {actionResult && (
+              <div className="rounded-md bg-muted p-3">
+                <Label>Action Result</Label>
+                <pre className="mt-2 text-xs whitespace-pre-wrap">{actionResult}</pre>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
         <h3 className="font-semibold text-blue-900 mb-2">Notes:</h3>

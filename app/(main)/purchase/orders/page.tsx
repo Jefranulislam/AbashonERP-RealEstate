@@ -50,6 +50,7 @@ export default function PurchaseOrdersPage() {
   const [expenseHeads, setExpenseHeads] = useState<any[]>([])
   const [requisitions, setRequisitions] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [mounted, setMounted] = useState(false)
   const [search, setSearch] = useState("")
   const [filterStatus, setFilterStatus] = useState("all")
   const [filterProject, setFilterProject] = useState("all")
@@ -96,6 +97,10 @@ export default function PurchaseOrdersPage() {
 
   const [discount, setDiscount] = useState("0")
   const [tax, setTax] = useState("0")
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const fetchOrders = async () => {
     try {
@@ -168,6 +173,10 @@ export default function PurchaseOrdersPage() {
   useEffect(() => {
     fetchData()
   }, [])
+
+  if (!mounted) {
+    return <div className="p-6 text-sm text-muted-foreground">Loading purchase orders...</div>
+  }
 
   const calculateItemTotal = (qty: string, rate: string): string => {
     const quantity = parseFloat(qty) || 0

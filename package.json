@@ -12,7 +12,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "load:test": "node scripts/load-test.mjs",
-    "verify:all": "pnpm run typecheck && pnpm run lint && pnpm run test && pnpm run build"
+    "verify:all": "pnpm run typecheck && pnpm run lint && pnpm run test && pnpm run build",
+    "vouchers:normalize": "tsx scripts/normalize-voucher-numbers.ts",
+    "account-codes:backfill": "tsx scripts/backfill-account-codes.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

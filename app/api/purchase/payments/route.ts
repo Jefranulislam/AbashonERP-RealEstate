@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { sql } from "@/lib/db"
 import { getCurrentUser } from "@/lib/auth"
+import { buildVoucherNo } from "@/lib/voucher-utils"
 
 export const runtime = 'edge'
 
@@ -79,15 +80,10 @@ export async function POST(request: NextRequest) {
     // Auto-create voucher if requested
     let voucherId = null
     if (data.createVoucher) {
-      // Generate voucher number
-      const lastVoucher = await sql`
-        SELECT voucher_no FROM vouchers 
-        WHERE voucher_no LIKE ${'DV-' + year + '-%'}
-        ORDER BY created_at DESC LIMIT 1
+      const voucherCount = await sql`
+        SELECT COUNT(*) as count FROM vouchers WHERE voucher_type = 'Debit'
       `
-      
-      const lastVoucherNum = lastVoucher.length > 0 ? parseInt(lastVoucher[0].voucher_no.split('-')[2]) : 0
-      const voucherNo = `DV-${year}-${String(lastVoucherNum + 1).padStart(4, '0')}`
+      const voucherNo = buildVoucherNo('Debit', Number(voucherCount[0].count) + 1, year)
 
       const voucher = await sql`
         INSERT INTO vouchers (
@@ -118,6 +114,22 @@ export async function POST(request: NextRequest) {
       voucherId = voucher[0].id
     }
 
+    // Validate party data - must have either vendor_id or reference_party_name
+    if (!data.vendorId && !data.referencePartyName) {
+      return NextResponse.json(
+        { error: "Either vendor or reference party name must be provided" },
+        { status: 400 }
+      )
+    }
+
+    // If reference_party_name is provided, reference_party_type must be set
+    if (data.referencePartyName && !data.referencePartyType) {
+      return NextResponse.json(
+        { error: "Reference party type must be specified when party name is provided" },
+        { status: 400 }
+      )
+    }
+
     const payment = await sql`
       INSERT INTO payment_transactions (
         payment_number,
@@ -146,7 +158,9 @@ export async function POST(request: NextRequest) {
         verified_by,
         verification_date,
         remarks,
-        attachments
+        attachments,
+        reference_party_type,
+        reference_party_name
       ) VALUES (
         ${paymentNumber},
         ${data.poId || null},
@@ -174,7 +188,9 @@ export async function POST(request: NextRequest) {
         ${data.verifiedBy || null},
         ${new Date().toISOString().split('T')[0]},
         ${data.remarks || null},
-        ${data.attachments || null}
+        ${data.attachments || null},
+        ${data.referencePartyType || null},
+        ${data.referencePartyName || null}
       )
       RETURNING *
     `

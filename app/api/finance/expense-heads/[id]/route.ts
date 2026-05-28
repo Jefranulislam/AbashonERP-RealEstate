@@ -20,17 +20,46 @@ export async function PUT(
       return NextResponse.json({ error: 'Invalid headName' }, { status: 400 })
     }
 
-    const incExpTypeId = data.incExpTypeId || null
+    const incExpTypeId = data.incExpTypeId === undefined || data.incExpTypeId === "none" ? null : data.incExpTypeId
+    const parentId = data.parentId === undefined || data.parentId === "none" ? null : data.parentId
+    const isGroup = data.isGroup === true
+    const type = data.type || "Dr"
+    const unit = data.unit || null
+    const accountCode = data.accountCode && String(data.accountCode).trim() ? String(data.accountCode).trim() : null
+    const headType = data.headType || null
+    const accountCategory = data.accountCategory === undefined || data.accountCategory === "none" ? null : data.accountCategory
     const isActive = data.isActive === undefined ? true : !!data.isActive
+
+    if (accountCode && !/^[0-9]{4}$/.test(accountCode)) {
+      return NextResponse.json({ error: 'accountCode must be a 4-digit string' }, { status: 400 })
+    }
+
+    if (accountCode) {
+      const existing = await sql`
+        SELECT id FROM income_expense_heads
+        WHERE account_code = ${accountCode} AND id <> ${id}
+        LIMIT 1
+      `
+      if (existing.length > 0) {
+        return NextResponse.json({ error: 'accountCode already in use' }, { status: 400 })
+      }
+    }
     
     const res = await sql`
       UPDATE income_expense_heads 
       SET head_name = ${data.headName}, 
           inc_exp_type_id = ${incExpTypeId},
+          parent_id = ${parentId},
+          is_group = ${isGroup},
+          type = ${type},
+          unit = ${unit},
+          account_code = ${accountCode},
+          head_type = ${headType},
+          account_category = ${accountCategory},
           is_active = ${isActive},
           updated_at = NOW()
       WHERE id = ${id}
-      RETURNING id, head_name, inc_exp_type_id, is_active, created_at, updated_at
+      RETURNING id, head_name, inc_exp_type_id, parent_id, is_group, level, full_path, type, unit, is_active, account_code, head_type, account_category, created_at, updated_at
     `
     
     if (res.length === 0) {

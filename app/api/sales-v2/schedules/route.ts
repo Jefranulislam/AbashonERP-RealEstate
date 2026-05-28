@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
         LEFT JOIN projects p ON s.project_id = p.id
         LEFT JOIN products pr ON s.product_id = pr.id
         WHERE sps.is_active = true 
-          AND sps.status NOT IN ('paid')
+          AND (COALESCE(sps.amount, 0) - COALESCE(sps.paid_amount, 0)) > 0
           AND sps.due_date < CURRENT_DATE
           AND s.is_active = true
         ORDER BY sps.due_date ASC
@@ -65,7 +65,8 @@ export async function GET(request: NextRequest) {
         LEFT JOIN projects p ON s.project_id = p.id
         LEFT JOIN products pr ON s.product_id = pr.id
         WHERE sps.is_active = true 
-          AND sps.status NOT IN ('paid')
+          AND (COALESCE(sps.amount, 0) - COALESCE(sps.paid_amount, 0)) > 0
+          AND sps.due_date >= CURRENT_DATE
           AND sps.due_date <= (CURRENT_DATE + INTERVAL '30 days')
           AND s.is_active = true
         ORDER BY sps.due_date ASC

@@ -74,12 +74,14 @@ export default function PaymentCollectionPage() {
   const [dueSchedules, setDueSchedules] = useState<PaymentSchedule[]>([])
   const [overdueSchedules, setOverdueSchedules] = useState<PaymentSchedule[]>([])
   const [recentPayments, setRecentPayments] = useState<Payment[]>([])
+  const [todayCollection, setTodayCollection] = useState(0)
   const [bankAccounts, setBankAccounts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [selectedSchedule, setSelectedSchedule] = useState<PaymentSchedule | null>(null)
   const [printData, setPrintData] = useState<any>(null)
   const [companySettings, setCompanySettings] = useState<any>({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
   
   // Payment form
   const [paymentForm, setPaymentForm] = useState({
@@ -100,15 +102,22 @@ export default function PaymentCollectionPage() {
   // Fetch data
   const fetchSchedules = async () => {
     try {
-      const [dueRes, overdueRes, paymentsRes] = await Promise.all([
+      const today = new Date().toISOString().split("T")[0]
+      const [dueRes, overdueRes, paymentsRes, paymentsTodayRes] = await Promise.all([
         axios.get("/api/sales-v2/schedules"),
         axios.get("/api/sales-v2/schedules?overdue=true"),
         axios.get("/api/sales-v2/payments"),
+        axios.get(`/api/sales-v2/payments?startDate=${today}&endDate=${today}`),
       ])
 
       setDueSchedules(dueRes.data.schedules)
       setOverdueSchedules(overdueRes.data.schedules)
       setRecentPayments(paymentsRes.data.payments?.slice(0, 20) || [])
+      setTodayCollection(
+        (paymentsTodayRes.data?.payments || [])
+          .filter((p: any) => p.status !== "cancelled" && p.status !== "bounced")
+          .reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0)
+      )
     } catch (error) {
       console.error("Error fetching schedules:", error)
     } finally {
@@ -157,6 +166,14 @@ export default function PaymentCollectionPage() {
   const handleSubmitPayment = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    if (isSubmitting) return
+
+    setIsSubmitting(true)
+    toast({
+      title: "Processing payment...",
+      description: "Please wait and do not click submit multiple times.",
+    })
+
     try {
       const response = await axios.post("/api/sales-v2/payments", paymentForm)
       
@@ -180,6 +197,8 @@ export default function PaymentCollectionPage() {
         description: error.response?.data?.error || "Failed to record payment",
         variant: "destructive",
       })
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -243,10 +262,6 @@ export default function PaymentCollectionPage() {
   // Summary calculations
   const totalDue = dueSchedules.reduce((sum, s) => sum + (s.amount - s.paid_amount), 0)
   const totalOverdue = overdueSchedules.reduce((sum, s) => sum + (s.amount - s.paid_amount), 0)
-  const todayCollection = recentPayments
-    .filter(p => p.payment_date === new Date().toISOString().split("T")[0])
-    .reduce((sum, p) => sum + p.amount, 0)
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -536,6 +551,7 @@ export default function PaymentCollectionPage() {
                 value={paymentForm.amount}
                 onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
                 required
+                disabled={isSubmitting}
                 className="text-lg font-bold"
               />
               {selectedSchedule && (
@@ -553,6 +569,7 @@ export default function PaymentCollectionPage() {
                 value={paymentForm.paymentDate}
                 onChange={(e) => setPaymentForm({ ...paymentForm, paymentDate: e.target.value })}
                 required
+                disabled={isSubmitting}
               />
             </div>
 
@@ -562,6 +579,7 @@ export default function PaymentCollectionPage() {
               <Select
                 value={paymentForm.paymentMethod}
                 onValueChange={(value) => setPaymentForm({ ...paymentForm, paymentMethod: value })}
+                disabled={isSubmitting}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -596,6 +614,7 @@ export default function PaymentCollectionPage() {
               <Select
                 value={paymentForm.bankCashId}
                 onValueChange={(value) => setPaymentForm({ ...paymentForm, bankCashId: value })}
+                disabled={isSubmitting}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select bank/cash account" />
@@ -619,6 +638,7 @@ export default function PaymentCollectionPage() {
                     value={paymentForm.chequeNumber}
                     onChange={(e) => setPaymentForm({ ...paymentForm, chequeNumber: e.target.value })}
                     required
+                    disabled={isSubmitting}
                   />
                 </div>
                 <div className="space-y-2">
@@ -628,6 +648,7 @@ export default function PaymentCollectionPage() {
                     value={paymentForm.chequeDate}
                     onChange={(e) => setPaymentForm({ ...paymentForm, chequeDate: e.target.value })}
                     required
+                    disabled={isSubmitting}
                   />
                 </div>
                 <div className="col-span-2 space-y-2">
@@ -636,6 +657,7 @@ export default function PaymentCollectionPage() {
                     value={paymentForm.chequeBank}
                     onChange={(e) => setPaymentForm({ ...paymentForm, chequeBank: e.target.value })}
                     placeholder="Enter bank name"
+                    disabled={isSubmitting}
                   />
                 </div>
               </div>
@@ -649,6 +671,7 @@ export default function PaymentCollectionPage() {
                   value={paymentForm.transactionReference}
                   onChange={(e) => setPaymentForm({ ...paymentForm, transactionReference: e.target.value })}
                   placeholder="Enter transaction ID/reference"
+                  disabled={isSubmitting}
                 />
               </div>
             )}
@@ -661,6 +684,7 @@ export default function PaymentCollectionPage() {
                 onChange={(e) => setPaymentForm({ ...paymentForm, remarks: e.target.value })}
                 placeholder="Any additional notes..."
                 rows={2}
+                disabled={isSubmitting}
               />
             </div>
 
@@ -671,6 +695,7 @@ export default function PaymentCollectionPage() {
                 id="sendSMS"
                 checked={paymentForm.sendSMS}
                 onChange={(e) => setPaymentForm({ ...paymentForm, sendSMS: e.target.checked })}
+                disabled={isSubmitting}
                 className="h-4 w-4"
               />
               <Label htmlFor="sendSMS" className="text-sm">
@@ -679,12 +704,12 @@ export default function PaymentCollectionPage() {
             </div>
 
             <div className="flex justify-end gap-2 pt-4 border-t">
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={isSubmitting}>
                 Cancel
               </Button>
-              <Button type="submit">
+              <Button type="submit" disabled={isSubmitting}>
                 <DollarSign className="mr-2 h-4 w-4" />
-                Record Payment
+                {isSubmitting ? "Processing..." : "Record Payment"}
               </Button>
             </div>
           </form>

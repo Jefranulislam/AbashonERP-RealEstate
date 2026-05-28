@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { sql } from "@/lib/db"
 import { getCurrentUser } from "@/lib/auth"
+import { isAdminUser } from "@/lib/admin-access"
 
 // GET - Fetch single payment details
 export async function GET(
@@ -11,6 +12,11 @@ export async function GET(
     const user = await getCurrentUser()
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const isAdmin = await isAdminUser(user.id)
+    if (!isAdmin) {
+      return NextResponse.json({ error: "Only Admin can cancel/delete payments" }, { status: 403 })
     }
 
     const { id } = await params

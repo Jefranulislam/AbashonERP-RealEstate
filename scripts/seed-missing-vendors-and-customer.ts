@@ -7,6 +7,7 @@ if (!process.env.DATABASE_URL) {
 
 // Now import db after env is loaded
 import { sql } from "../lib/db";
+import { getNextVendorCode } from "../lib/vendor-code";
 
 interface VendorData {
   vendorName: string;
@@ -90,17 +91,20 @@ async function seedVendorsAndCustomer() {
     for (const vendor of newVendorsData) {
       // Check if vendor already exists
       const existing = await sql`
-        SELECT id, vendor_name FROM vendors 
+        SELECT id, vendor_name, vendor_code FROM vendors 
         WHERE LOWER(vendor_name) = LOWER(${vendor.vendorName})
       `;
 
       if (existing.length > 0) {
-        console.log(`⏭️  Vendor "${vendor.vendorName}" already exists (ID: ${existing[0].id})`);
+        console.log(`⏭️  Vendor "${vendor.vendorName}" already exists (${existing[0].vendor_code || "no code"}) (ID: ${existing[0].id})`);
         continue;
       }
 
+      const vendorCode = await getNextVendorCode();
+
       const result = await sql`
         INSERT INTO vendors (
+          vendor_code,
           vendor_name,
           mailing_address,
           phone,
@@ -111,6 +115,7 @@ async function seedVendorsAndCustomer() {
           bank_routing_number,
           materials
         ) VALUES (
+          ${vendorCode},
           ${vendor.vendorName},
           ${vendor.address},
           ${vendor.phoneNumber},
@@ -121,10 +126,10 @@ async function seedVendorsAndCustomer() {
           ${vendor.routingNumber},
           ${vendor.materials}
         )
-        RETURNING id, vendor_name
+        RETURNING id, vendor_name, vendor_code
       `;
 
-      console.log(`✅ Created vendor: ${result[0].vendor_name} (ID: ${result[0].id})`);
+      console.log(`✅ Created vendor: ${result[0].vendor_name} (${result[0].vendor_code}) (ID: ${result[0].id})`);
     }
 
     // Seed customer

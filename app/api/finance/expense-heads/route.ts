@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { sql } from "@/lib/db"
 import { getCurrentUser } from "@/lib/auth"
+import { ensureAccountCodeSchema, getNextAccountCode } from "@/lib/account-code"
 
 // ✅ Use Edge runtime for faster cold starts
 export const runtime = 'edge'
@@ -14,12 +15,15 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    await ensureAccountCodeSchema()
+
     // Get all expense heads with hierarchy information
     // Handle case where columns might not exist yet
     const expenseHeads = await sql`
       SELECT 
         ieh.id,
         ieh.head_name,
+        ieh.account_code,
         ieh.unit,
         ieh.inc_exp_type_id,
         ieh.type,
@@ -67,6 +71,22 @@ export async function POST(request: NextRequest) {
     const type = data.type || 'Dr'
     const unit = data.unit || null
     const isActive = data.isActive === undefined ? true : !!data.isActive
+    await ensureAccountCodeSchema()
+
+    const accountCode = data.accountCode && String(data.accountCode).trim() ? String(data.accountCode).trim() : await getNextAccountCode()
+    const headType = data.headType || null
+    const accountCategory = data.accountCategory || null
+
+    // Validate account code: required 4-digit string
+    if (!accountCode || typeof accountCode !== 'string' || !/^[0-9]{4}$/.test(accountCode)) {
+      return NextResponse.json({ error: 'accountCode must be a 4-digit string (e.g. 4001)' }, { status: 400 })
+    }
+
+    // Check uniqueness
+    const existing = await sql`SELECT id FROM income_expense_heads WHERE account_code = ${accountCode} LIMIT 1`
+    if (existing.length > 0) {
+      return NextResponse.json({ error: 'accountCode already in use' }, { status: 400 })
+    }
 
     const res = await sql`
       INSERT INTO income_expense_heads (
@@ -76,7 +96,10 @@ export async function POST(request: NextRequest) {
         is_group,
         type,
         unit,
-        is_active
+        is_active,
+        account_code,
+        head_type,
+        account_category
       )
       VALUES (
         ${data.headName}, 
@@ -85,9 +108,12 @@ export async function POST(request: NextRequest) {
         ${isGroup},
         ${type},
         ${unit},
-        ${isActive}
+        ${isActive},
+        ${accountCode},
+        ${headType},
+        ${accountCategory}
       )
-      RETURNING id, head_name, inc_exp_type_id, parent_id, is_group, level, full_path, type, unit, is_active, created_at
+      RETURNING id, head_name, inc_exp_type_id, parent_id, is_group, level, full_path, type, unit, is_active, account_code, head_type, account_category, created_at
     `
 
     return NextResponse.json({ head: res[0] })

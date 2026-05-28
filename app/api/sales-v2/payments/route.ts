@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { sql } from "@/lib/db"
 import { getCurrentUser } from "@/lib/auth"
 import { sendSMS } from "@/lib/sms-service"
+import { buildVoucherNo } from "@/lib/voucher-utils"
 
 // GET - Fetch all payments
 export async function GET(request: NextRequest) {
@@ -59,6 +60,68 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await request.json()
+    const saleId = Number(data.saleId)
+    const scheduleId = data.scheduleId ? Number(data.scheduleId) : null
+    const paymentAmount = parseFloat(data.amount)
+
+    if (!Number.isFinite(paymentAmount) || paymentAmount <= 0) {
+      return NextResponse.json({ error: "Invalid payment amount" }, { status: 400 })
+    }
+
+    if (scheduleId) {
+      const scheduleRows = await sql`
+        SELECT id, amount, paid_amount, status
+        FROM sale_payment_schedules
+        WHERE id = ${scheduleId}
+          AND sale_id = ${saleId}
+          AND is_active = true
+        LIMIT 1
+      `
+
+      if (scheduleRows.length === 0) {
+        return NextResponse.json({ error: "Payment schedule not found" }, { status: 404 })
+      }
+
+      const schedule = scheduleRows[0]
+      const remaining = Number(schedule.amount) - Number(schedule.paid_amount || 0)
+
+      if (remaining <= 0) {
+        return NextResponse.json({ error: "This schedule is already fully paid" }, { status: 409 })
+      }
+
+      if (paymentAmount > remaining) {
+        return NextResponse.json(
+          { error: `Payment amount exceeds remaining balance (${remaining.toFixed(2)})` },
+          { status: 400 }
+        )
+      }
+
+      const paymentDate = data.paymentDate || new Date().toISOString().split('T')[0]
+      const duplicateRows = await sql`
+        SELECT id, receipt_no
+        FROM sale_payments
+        WHERE sale_id = ${saleId}
+          AND schedule_id = ${scheduleId}
+          AND payment_date = ${paymentDate}
+          AND amount = ${paymentAmount}
+          AND is_active = true
+          AND status NOT IN ('bounced', 'cancelled')
+          AND created_at >= (CURRENT_TIMESTAMP - INTERVAL '2 minutes')
+        ORDER BY created_at DESC
+        LIMIT 1
+      `
+
+      if (duplicateRows.length > 0) {
+        return NextResponse.json(
+          {
+            error: `Duplicate payment prevented. Existing receipt: ${duplicateRows[0].receipt_no}`,
+            existingPaymentId: duplicateRows[0].id,
+            duplicatePrevented: true,
+          },
+          { status: 409 }
+        )
+      }
+    }
 
     // Generate receipt number
     const receiptNoResult = await sql`SELECT generate_receipt_no() as receipt_no`
@@ -77,7 +140,7 @@ export async function POST(request: NextRequest) {
       LEFT JOIN customers c ON s.customer_id = c.id
       LEFT JOIN projects p ON s.project_id = p.id
       LEFT JOIN products pr ON s.product_id = pr.id
-      WHERE s.id = ${data.saleId}
+      WHERE s.id = ${saleId}
     `
 
     if (saleResult.length === 0) {
@@ -95,11 +158,11 @@ export async function POST(request: NextRequest) {
         transaction_reference, status, remarks, received_by
       ) VALUES (
         ${receiptNo},
-        ${data.saleId},
+        ${saleId},
         ${sale.customer_id},
-        ${data.scheduleId || null},
+        ${scheduleId},
         ${data.paymentDate || new Date().toISOString().split('T')[0]},
-        ${parseFloat(data.amount)},
+        ${paymentAmount},
         ${data.paymentMethod || 'cash'},
         ${data.bankCashId || null},
         ${data.chequeNumber || null},
@@ -115,12 +178,51 @@ export async function POST(request: NextRequest) {
 
     const payment = result[0]
 
+    // Keep schedules/sales consistent even if DB triggers are missing.
+    if (scheduleId) {
+      await sql`
+        UPDATE sale_payment_schedules sps
+        SET
+          paid_amount = paid.total_paid,
+          status = CASE
+            WHEN paid.total_paid >= sps.amount THEN 'paid'
+            WHEN paid.total_paid > 0 THEN 'partial'
+            WHEN sps.due_date < CURRENT_DATE THEN 'overdue'
+            ELSE 'pending'
+          END,
+          updated_at = CURRENT_TIMESTAMP
+        FROM (
+          SELECT COALESCE(SUM(sp.amount), 0) AS total_paid
+          FROM sale_payments sp
+          WHERE sp.schedule_id = ${scheduleId}
+            AND sp.is_active = true
+            AND sp.status NOT IN ('bounced', 'cancelled')
+        ) paid
+        WHERE sps.id = ${scheduleId}
+      `
+    }
+
+    await sql`
+      UPDATE sales s
+      SET
+        total_paid = totals.total_paid,
+        outstanding_amount = s.net_price - totals.total_paid,
+        updated_at = CURRENT_TIMESTAMP
+      FROM (
+        SELECT COALESCE(SUM(amount), 0) AS total_paid
+        FROM sale_payments
+        WHERE sale_id = ${saleId}
+          AND is_active = true
+          AND status NOT IN ('bounced', 'cancelled')
+      ) totals
+      WHERE s.id = ${saleId}
+    `
     // Log activity - skip performed_by since user.id is UUID and column expects integer
     await sql`
       INSERT INTO sale_activities (
         sale_id, activity_type, description
       ) VALUES (
-        ${data.saleId}, 'payment_received', 
+        ${saleId}, 'payment_received', 
         ${'Payment of ' + data.amount + ' received via ' + (data.paymentMethod || 'cash') + '. Receipt: ' + receiptNo}
       )
     `
@@ -132,8 +234,9 @@ export async function POST(request: NextRequest) {
       const voucherNoResult = await sql`
         SELECT COALESCE(MAX(CAST(SUBSTRING(voucher_no FROM '[0-9]+$') AS INTEGER)), 0) + 1 as next_no 
         FROM vouchers
+        WHERE voucher_type = 'Credit'
       `
-      const voucherNo = `CV-${new Date().toISOString().slice(0, 7).replace('-', '')}-${String(voucherNoResult[0].next_no).padStart(4, '0')}`
+      const voucherNo = buildVoucherNo('Credit', Number(voucherNoResult[0].next_no))
 
       const voucher = await sql`
         INSERT INTO vouchers (
@@ -142,7 +245,7 @@ export async function POST(request: NextRequest) {
         ) VALUES (
           ${voucherNo}, 'Credit', ${sale.project_id}, ${data.bankCashId},
           ${data.paymentDate || new Date().toISOString().split('T')[0]},
-          ${parseFloat(data.amount)},
+          ${paymentAmount},
           ${'Payment received from ' + sale.customer_name + ' for ' + sale.product_name + ' - ' + receiptNo},
           true
         )
@@ -161,7 +264,7 @@ export async function POST(request: NextRequest) {
     if (data.sendSMS !== false) {
       try {
         const updatedSale = await sql`
-          SELECT outstanding_amount FROM sales WHERE id = ${data.saleId}
+          SELECT outstanding_amount FROM sales WHERE id = ${saleId}
         `
         
         await sendSMS({
@@ -169,7 +272,7 @@ export async function POST(request: NextRequest) {
           phone: sale.customer_phone,
           variables: {
             customer_name: sale.customer_name,
-            amount: parseFloat(data.amount).toLocaleString(),
+            amount: paymentAmount.toLocaleString(),
             unit_name: sale.product_name + (sale.unit_no ? ' (' + sale.unit_no + ')' : ''),
             receipt_no: receiptNo,
             outstanding: (updatedSale[0]?.outstanding_amount || 0).toLocaleString()

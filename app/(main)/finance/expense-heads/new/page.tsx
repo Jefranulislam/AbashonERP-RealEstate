@@ -45,13 +45,24 @@ export default function NewExpenseHeadPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [headsRes, typesRes] = await Promise.all([
+        const [headsResult, typesResult] = await Promise.allSettled([
           axios.get("/api/finance/expense-heads"),
           axios.get("/api/initial-expense-heads")
         ])
-        
-        setExpenseHeads(headsRes.data.expenseHeads || [])
-        setExpenseTypes(typesRes.data.expenseTypes || [])
+
+        if (headsResult.status === "fulfilled") {
+          setExpenseHeads(headsResult.value.data.expenseHeads || [])
+        } else {
+          console.error("Error fetching expense heads:", headsResult.reason)
+          setExpenseHeads([])
+        }
+
+        if (typesResult.status === "fulfilled") {
+          setExpenseTypes(typesResult.value.data.expenseTypes || [])
+        } else {
+          console.error("Error fetching expense types:", typesResult.reason)
+          setExpenseTypes([])
+        }
       } catch (error) {
         console.error("Error fetching data:", error)
       } finally {
@@ -69,6 +80,12 @@ export default function NewExpenseHeadPage() {
       return
     }
 
+    // Validate account code: required 4-digit numeric
+    if (!formData.accountCode || !/^[0-9]{4}$/.test(formData.accountCode)) {
+      alert('Please provide a 4-digit account code (e.g., 4001). You can click Auto-generate.')
+      return
+    }
+
     try {
       await axios.post("/api/finance/expense-heads", {
         headName: formData.headName,
@@ -76,7 +93,10 @@ export default function NewExpenseHeadPage() {
         isGroup: formData.isGroup,
         type: formData.type,
         unit: formData.unit || null,
-        incExpTypeId: formData.incExpTypeId === "none" ? null : formData.incExpTypeId
+        incExpTypeId: formData.incExpTypeId === "none" ? null : formData.incExpTypeId,
+        accountCode: formData.accountCode,
+        headType: formData.headType || null,
+        accountCategory: formData.accountCategory === "none" ? null : formData.accountCategory
       })
 
       alert("Account head created successfully!")
@@ -216,14 +236,35 @@ export default function NewExpenseHeadPage() {
 
                     <div>
                       <Label htmlFor="accountCode">Account Code</Label>
-                      <Input
-                        id="accountCode"
-                        placeholder="e.g., 4001, 5001"
-                        value={formData.accountCode}
-                        onChange={(e) => setFormData({ ...formData, accountCode: e.target.value })}
-                      />
+                      <div className="flex gap-2">
+                        <Input
+                          id="accountCode"
+                          placeholder="e.g., 4001"
+                          value={formData.accountCode}
+                          onChange={(e) => setFormData({ ...formData, accountCode: e.target.value })}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={async () => {
+                            try {
+                              const res = await axios.get('/api/finance/expense-heads/next-code')
+                              if (res.data?.code) {
+                                setFormData({ ...formData, accountCode: res.data.code })
+                              } else {
+                                alert('Could not generate code')
+                              }
+                            } catch (err) {
+                              console.error(err)
+                              alert('Failed to generate code')
+                            }
+                          }}
+                        >
+                          Auto-generate
+                        </Button>
+                      </div>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Optional unique code for identification
+                        Required 4-digit unique code (e.g., 4001). Use Auto-generate to pick the next available code.
                       </p>
                     </div>
 

@@ -21,7 +21,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         phone = ${data.phone},
         email = ${data.email},
         description = ${data.description},
-        is_active = ${data.isActive},
+        bank_name = ${data.bankName || null},
+        bank_account_number = ${data.bankAccountNumber || null},
+        bank_account_name = ${data.bankAccountName || null},
+        bank_branch = ${data.bankBranch || null},
+        bank_routing_number = ${data.bankRoutingNumber || null},
+        bank_swift_code = ${data.bankSwiftCode || null},
+        materials = ${data.materials && data.materials.length > 0 ? data.materials : null},
+        is_active = ${data.isActive !== false},
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ${id}
       RETURNING *
@@ -45,8 +52,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     console.log("[DELETE vendor] Attempting to delete vendor with ID:", id)
 
     await sql`
-      UPDATE vendors
-      SET is_active = false, updated_at = CURRENT_TIMESTAMP
+      DELETE FROM vendors
       WHERE id = ${id}
     `
 

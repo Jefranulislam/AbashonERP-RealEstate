@@ -1,5 +1,6 @@
 import "dotenv/config"
 import { sql } from "../lib/db"
+import { getNextVendorCode } from "../lib/vendor-code"
 import * as fs from "fs"
 import * as path from "path"
 import * as csv from "csv-parse/sync"
@@ -57,15 +58,17 @@ async function importLegacyTransactions() {
     // Get or create account heads by category (simplified)
     const accountHeads = new Map<string, number>()
     
-    // For legacy import, we'll use a default income_expense_type
+          SELECT id, vendor_code FROM vendors WHERE vendor_name = ${vendorName} LIMIT 1
     const expenseType = await sql`SELECT id FROM income_expense_types WHERE name = 'Miscellaneous' LIMIT 1`
     let typeId = expenseType.length > 0 ? expenseType[0].id : 1
     
     // Create expense types if needed
     if (expenseType.length === 0) {
       const created = await sql`
+          const vendorCode = await getNextVendorCode()
         INSERT INTO income_expense_types (name, is_active)
         VALUES ('Miscellaneous', true)
+              vendor_code,
         RETURNING id
       `
       typeId = created[0].id
@@ -75,6 +78,7 @@ async function importLegacyTransactions() {
     console.log(`\n📊 Account categories found: ${Array.from(categories).join(", ")}`)
 
     for (const category of categories) {
+              ${vendorCode},
       const existing = await sql`
         SELECT id FROM income_expense_heads 
         WHERE head_name = ${category} 
@@ -87,7 +91,7 @@ async function importLegacyTransactions() {
           const created = await sql`
             INSERT INTO income_expense_heads (head_name, inc_exp_type_id, type, is_active)
             VALUES (${category}, ${typeId}, 'Dr', true)
-            RETURNING id
+          console.log(`✅ Created vendor: ${vendorName} (${created[0].vendor_code})`)
           `
           accountHeads.set(category, created[0].id)
           console.log(`✅ Created account head: ${category}`)

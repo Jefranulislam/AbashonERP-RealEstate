@@ -369,6 +369,7 @@ export default function VendorsPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>SL No.</TableHead>
+                    <TableHead>Vendor Code</TableHead>
                     <TableHead>Vendor Name</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead>Mailing Address</TableHead>
@@ -380,7 +381,7 @@ export default function VendorsPage() {
                 <TableBody>
                   {vendors.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center text-muted-foreground">
+                      <TableCell colSpan={8} className="text-center text-muted-foreground">
                         No vendors found
                       </TableCell>
                     </TableRow>
@@ -388,6 +389,7 @@ export default function VendorsPage() {
                     vendors.map((vendor, index) => (
                       <TableRow key={vendor.id}>
                         <TableCell>{index + 1}</TableCell>
+                        <TableCell><Badge variant="outline">{vendor.vendor_code || "-"}</Badge></TableCell>
                         <TableCell className="font-medium">{vendor.vendor_name}</TableCell>
                         <TableCell>{new Date(vendor.created_at).toLocaleDateString()}</TableCell>
                         <TableCell>{vendor.mailing_address || "-"}</TableCell>
@@ -429,6 +431,10 @@ export default function VendorsPage() {
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold border-b pb-2">Basic Information</h3>
                 <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-muted-foreground">Vendor Code</Label>
+                    <p className="font-medium">{selectedVendor.vendor_code || "-"}</p>
+                  </div>
                   <div>
                     <Label className="text-muted-foreground">Vendor Name</Label>
                     <p className="font-medium">{selectedVendor.vendor_name}</p>

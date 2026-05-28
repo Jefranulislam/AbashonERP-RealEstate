@@ -44,8 +44,14 @@ export async function GET(request: NextRequest) {
       SELECT 
         id,
         account_title,
-        account_type,
-        initial_balance,
+        COALESCE((
+          SELECT ibc.initial_balance
+          FROM initial_bank_cash ibc
+          WHERE ibc.bank_cash_id = bank_cash_accounts.id
+            AND ibc.date <= ${asOnDate}
+          ORDER BY ibc.date DESC, ibc.id DESC
+          LIMIT 1
+        ), 0) as initial_balance,
         COALESCE(
           (SELECT SUM(amount) FROM vouchers WHERE bank_cash_id = bank_cash_accounts.id AND voucher_type = 'Credit' AND date <= ${asOnDate}),
           0
@@ -64,7 +70,7 @@ export async function GET(request: NextRequest) {
         ) as contra_debits
       FROM bank_cash_accounts
       WHERE is_active = true
-      ORDER BY account_type, account_title
+      ORDER BY account_title
     `
 
     // Calculate current balances for bank/cash accounts
@@ -94,13 +100,41 @@ export async function GET(request: NextRequest) {
         ieh.head_name,
         iet.name as type_name,
         iet.classification,
-        COALESCE(
-          (SELECT SUM(amount) FROM vouchers WHERE expense_head_id = ieh.id AND voucher_type = 'Credit' AND date <= ${asOnDate}),
-          0
+        (
+          COALESCE((
+            SELECT SUM(amount)
+            FROM vouchers
+            WHERE expense_head_id = ieh.id
+              AND voucher_type = 'Credit'
+              AND date <= ${asOnDate}
+          ), 0)
+          +
+          COALESCE((
+            SELECT SUM(COALESCE(jvd.credit_amount, 0))
+            FROM journal_voucher_details jvd
+            INNER JOIN vouchers vj ON vj.id = jvd.voucher_id
+            WHERE jvd.expense_head_id = ieh.id
+              AND vj.voucher_type = 'Journal'
+              AND vj.date <= ${asOnDate}
+          ), 0)
         ) as total_credits,
-        COALESCE(
-          (SELECT SUM(amount) FROM vouchers WHERE expense_head_id = ieh.id AND voucher_type = 'Debit' AND date <= ${asOnDate}),
-          0
+        (
+          COALESCE((
+            SELECT SUM(amount)
+            FROM vouchers
+            WHERE expense_head_id = ieh.id
+              AND voucher_type = 'Debit'
+              AND date <= ${asOnDate}
+          ), 0)
+          +
+          COALESCE((
+            SELECT SUM(COALESCE(jvd.debit_amount, 0))
+            FROM journal_voucher_details jvd
+            INNER JOIN vouchers vj ON vj.id = jvd.voucher_id
+            WHERE jvd.expense_head_id = ieh.id
+              AND vj.voucher_type = 'Journal'
+              AND vj.date <= ${asOnDate}
+          ), 0)
         ) as total_debits
       FROM income_expense_heads ieh
       LEFT JOIN income_expense_types iet ON ieh.inc_exp_type_id = iet.id
@@ -122,8 +156,9 @@ export async function GET(request: NextRequest) {
       
       if (balance === 0) continue
 
-      const headName = head.head_name.toLowerCase()
+      const headName = String(head.head_name || '').toLowerCase()
       const typeName = (head.type_name || '').toLowerCase()
+      const classification = String(head.classification || '').toLowerCase()
 
       // Classify based on account type and name
       if (typeName === 'income') {
@@ -132,8 +167,44 @@ export async function GET(request: NextRequest) {
         totalExpense += Math.abs(balance)
       }
       
-      // Classify as assets, liabilities, or equity based on keywords
-      if (headName.includes('land') || headName.includes('building') || 
+      // Classification priority: explicit classification -> account type -> keyword fallback.
+      if (classification === 'asset') {
+        if (headName.includes('land') || headName.includes('building') || 
+            headName.includes('machinery') || headName.includes('equipment') || 
+            headName.includes('vehicle') || headName.includes('furniture')) {
+          fixedAssets.push({
+            name: head.head_name,
+            amount: Math.abs(balance),
+            accountId: head.id
+          })
+        } else {
+          currentAssets.push({
+            name: head.head_name,
+            amount: Math.abs(balance),
+            accountId: head.id
+          })
+        }
+      } else if (classification === 'liability') {
+        if (headName.includes('loan') && (headName.includes('long') || headName.includes('term'))) {
+          longTermLiabilities.push({
+            name: head.head_name,
+            amount: Math.abs(balance),
+            accountId: head.id
+          })
+        } else {
+          currentLiabilities.push({
+            name: head.head_name,
+            amount: Math.abs(balance),
+            accountId: head.id
+          })
+        }
+      } else if (classification === 'equity') {
+        equityItems.push({
+          name: head.head_name,
+          amount: Math.abs(balance),
+          accountId: head.id
+        })
+      } else if (headName.includes('land') || headName.includes('building') || 
           headName.includes('machinery') || headName.includes('equipment') || 
           headName.includes('vehicle') || headName.includes('furniture')) {
         fixedAssets.push({

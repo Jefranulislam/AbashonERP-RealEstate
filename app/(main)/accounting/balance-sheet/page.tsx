@@ -40,7 +40,12 @@ export default function BalanceSheetPage() {
 
   const handleGenerateReport = async () => {
     try {
-      await refetch()
+      const result = await refetch()
+      if (result.error || !result.data) {
+        const message = (result.error as any)?.message || "Failed to generate balance sheet"
+        toast({ title: "Error", description: message, variant: "destructive" })
+        return
+      }
       toast({ title: "Report generated", description: "Balance sheet has been generated successfully" })
     } catch (error) {
       toast({ title: "Error", description: "Failed to generate balance sheet", variant: "destructive" })

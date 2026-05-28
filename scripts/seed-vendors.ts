@@ -7,6 +7,7 @@ if (!process.env.DATABASE_URL) {
 
 // Now import db after env is loaded
 import { sql } from "../lib/db";
+import { getNextVendorCode } from "../lib/vendor-code";
 
 interface VendorData {
   vendorName: string;
@@ -166,9 +167,11 @@ async function seedVendors() {
     for (const vendor of vendorsData) {
       try {
         const description = `Contact: ${vendor.personName}${vendor.bankCode ? ` | Bank Code: ${vendor.bankCode}` : ""}${vendor.accountType ? ` | Account Type: ${vendor.accountType}` : ""}`;
+        const vendorCode = await getNextVendorCode();
 
         const result = await sql`
           INSERT INTO vendors (
+            vendor_code,
             vendor_name,
             mailing_address,
             phone,
@@ -180,6 +183,7 @@ async function seedVendors() {
             bank_routing_number,
             is_active
           ) VALUES (
+            ${vendorCode},
             ${vendor.vendorName},
             ${vendor.address || null},
             ${vendor.phoneNumber || null},
@@ -191,10 +195,10 @@ async function seedVendors() {
             ${vendor.routingNumber || null},
             ${true}
           )
-          RETURNING id, vendor_name
+          RETURNING id, vendor_name, vendor_code
         `;
 
-        console.log(`✅ Inserted: ${vendor.vendorName} (ID: ${result[0].id})`);
+        console.log(`✅ Inserted: ${vendor.vendorName} (${result[0].vendor_code}) (ID: ${result[0].id})`);
         successCount++;
       } catch (error) {
         console.error(`❌ Error inserting ${vendor.vendorName}:`, error);

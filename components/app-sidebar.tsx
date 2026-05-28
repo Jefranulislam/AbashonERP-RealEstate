@@ -135,6 +135,7 @@ const menuItems = [
     icon: Settings,
     items: [
       { title: "Company Settings", url: "/settings" },
+      { title: "Import Center", url: "/settings/imports" },
       { title: "User Management", url: "/settings/users" },
     ],
   },
