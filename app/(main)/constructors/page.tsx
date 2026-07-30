@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useEffect, useState } from "react"
+import { formatDateDMY } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -60,10 +61,10 @@ export default function ConstructorsPage() {
       if (search) params.append("search", search)
 
       const response = await axios.get(`/api/constructors?${params.toString()}`)
-      console.log("[v0] Constructors fetched:", response.data)
+      console.log("Constructors fetched:", response.data)
       setConstructors(response.data.constructors || [])
     } catch (error) {
-      console.error("[v0] Error fetching constructors:", error)
+      console.error("Error fetching constructors:", error)
       toast.error("Failed to fetch constructors")
     } finally {
       setLoading(false)
@@ -89,7 +90,7 @@ export default function ConstructorsPage() {
       setDialogOpen(false)
       resetForm()
     } catch (error) {
-      console.error("[v0] Error saving constructor:", error)
+      console.error("Error saving constructor:", error)
       toast.error("Failed to save constructor")
     }
   }
@@ -102,7 +103,7 @@ export default function ConstructorsPage() {
       toast.success("Constructor deleted successfully")
       fetchConstructors()
     } catch (error) {
-      console.error("[v0] Error deleting constructor:", error)
+      console.error("Error deleting constructor:", error)
       toast.error("Failed to delete constructor")
     }
   }
@@ -377,7 +378,7 @@ export default function ConstructorsPage() {
                     <TableRow key={constructor.id}>
                       <TableCell>{index + 1}</TableCell>
                       <TableCell className="font-medium">{constructor.constructor_name}</TableCell>
-                      <TableCell>{new Date(constructor.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell>{formatDateDMY(constructor.created_at)}</TableCell>
                       <TableCell>{constructor.mailing_address || "-"}</TableCell>
                       <TableCell>{constructor.phone || "-"}</TableCell>
                       <TableCell>{constructor.email || "-"}</TableCell>

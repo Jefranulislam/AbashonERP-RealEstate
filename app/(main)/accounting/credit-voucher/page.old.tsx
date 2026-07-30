@@ -44,7 +44,7 @@ export default function CreditVoucherPage() {
       const response = await axios.get("/api/accounting/vouchers?voucherType=Credit")
       setVouchers(response.data.vouchers)
     } catch (error) {
-      console.error("[v0] Error fetching vouchers:", error)
+      console.error("Error fetching vouchers:", error)
     } finally {
       setLoading(false)
     }
@@ -62,7 +62,7 @@ export default function CreditVoucherPage() {
       setExpenseHeads(expenseHeadsRes.data.expenseHeads)
       setBankCashAccounts(bankCashRes.data.bankCashAccounts)
     } catch (error) {
-      console.error("[v0] Error fetching data:", error)
+      console.error("Error fetching data:", error)
     }
   }
 
@@ -83,7 +83,7 @@ export default function CreditVoucherPage() {
       setDialogOpen(false)
       resetForm()
     } catch (error) {
-      console.error("[v0] Error saving voucher:", error)
+      console.error("Error saving voucher:", error)
     }
   }
 
@@ -94,7 +94,7 @@ export default function CreditVoucherPage() {
       await axios.delete(`/api/accounting/vouchers/${id}`)
       fetchVouchers()
     } catch (error) {
-      console.error("[v0] Error deleting voucher:", error)
+      console.error("Error deleting voucher:", error)
     }
   }
 

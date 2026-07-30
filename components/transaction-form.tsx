@@ -60,7 +60,16 @@ export function TransactionForm({
   loading = false,
   mode = 'create',
 }: TransactionFormProps) {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    vendorId: number | null
+    vendorName: string
+    referencePartyType: ReferencePartyType | null
+    referencePartyName: string
+    expenseHeadId: number | null
+    expenseHeadName: string
+    amount: number
+    particulars: string
+  }>({
     vendorId: initialData?.vendorId || null,
     vendorName: initialData?.vendorName || '',
     referencePartyType: initialData?.referencePartyType || null,
@@ -94,13 +103,13 @@ export function TransactionForm({
 
   // Get vendor name when id changes
   const handleVendorChange = (vId: string) => {
-    const vendorId = vId ? Number(vId) : null
+    const vendorId = vId && vId !== 'none' ? Number(vId) : null
     const selectedVendor = vendors.find((v) => v.id === vendorId)
     setFormData((prev) => ({
       ...prev,
       vendorId,
       vendorName: selectedVendor?.vendor_name || '',
-      referencePartyType: vendorId ? 'VENDOR' : null,
+      referencePartyType: vendorId ? ReferencePartyType.VENDOR : null,
       referencePartyName: '',
     }))
   }
@@ -109,7 +118,7 @@ export function TransactionForm({
   const handleReferencePartyTypeChange = (type: string) => {
     setFormData((prev) => ({
       ...prev,
-      referencePartyType: type || null,
+      referencePartyType: (type as ReferencePartyType) || null,
       referencePartyName: '', // Clear the name when type changes
     }))
   }
@@ -224,14 +233,14 @@ export function TransactionForm({
                 {partyRule === ExpenseHeadPartyRule.VENDOR_REQUIRED && ' *'}
               </Label>
               <Select
-                value={formData.vendorId?.toString() || ''}
+                value={formData.vendorId?.toString() || 'none'}
                 onValueChange={handleVendorChange}
               >
                 <SelectTrigger id="vendor">
                   <SelectValue placeholder="Select vendor..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">-- None (Use party name instead) --</SelectItem>
+                  <SelectItem value="none">-- None (Use party name instead) --</SelectItem>
                   {vendors.map((vendor) => (
                     <SelectItem key={vendor.id} value={vendor.id.toString()}>
                       {vendor.vendor_name}

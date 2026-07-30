@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { sql } from "@/lib/db"
 import { getCurrentUser } from "@/lib/auth"
 import { ensureVendorCodeSchema, getNextVendorCode } from "@/lib/vendor-code"
+import { ensureVoucherPaymentSchema } from "@/lib/voucher-schema"
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,13 +15,13 @@ export async function GET(request: NextRequest) {
 
   const searchParams = request.nextUrl.searchParams
   const search = searchParams.get("search")
-  const limitParam = Number(searchParams.get("limit") || 20)
+  const limitParam = Number(searchParams.get("limit") || 1000)
   const offsetParam = Number(searchParams.get("offset") || 0)
-  // enforce sensible bounds
-  const limit = Math.min(Math.max(1, limitParam), 100)
+  // enforce sensible bounds (default returns all vendors for dropdowns/lists)
+  const limit = Math.min(Math.max(1, limitParam), 1000)
   const offset = Math.max(0, offsetParam)
 
-    console.log("[v0] Fetching vendors with search:", search)
+    console.log("Fetching vendors with search:", search)
 
     let vendors
 
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error("[v0] Error fetching vendors:", error)
+    console.error("Error fetching vendors:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -60,17 +61,18 @@ export async function POST(request: NextRequest) {
     }
 
     await ensureVendorCodeSchema()
+    await ensureVoucherPaymentSchema()
 
     const data = await request.json()
     const vendorCode = String(data.vendorCode || "").trim() || await getNextVendorCode()
 
     const result = await sql`
       INSERT INTO vendors (
-        vendor_code, vendor_name, mailing_address, website, phone, email, description,
+        vendor_code, vendor_name, contact_person, mailing_address, website, phone, email, description,
         bank_name, bank_account_number, bank_account_name, bank_branch, bank_routing_number, bank_swift_code,
         materials, is_active
       ) VALUES (
-        ${vendorCode}, ${data.vendorName}, ${data.mailingAddress}, ${data.website}, 
+        ${vendorCode}, ${data.vendorName}, ${data.contactPerson || null}, ${data.mailingAddress}, ${data.website},
         ${data.phone}, ${data.email}, ${data.description},
         ${data.bankName || null}, ${data.bankAccountNumber || null}, ${data.bankAccountName || null},
         ${data.bankBranch || null}, ${data.bankRoutingNumber || null}, ${data.bankSwiftCode || null},
@@ -82,7 +84,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, vendor: result[0] })
   } catch (error) {
-    console.error("[v0] Error creating vendor:", error)
+    console.error("Error creating vendor:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

@@ -2,8 +2,10 @@
 
 import type React from "react"
 import { useEffect, useState } from "react"
+import { formatDateDMY } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { DateField } from "@/components/ui/date-field"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
@@ -300,11 +302,11 @@ export default function MaterialDeliveriesPage() {
                         </div>
                         <div>
                           <Label className="text-muted-foreground">Order Date</Label>
-                          <p>{new Date(selectedPO.order_date).toLocaleDateString()}</p>
+                          <p>{formatDateDMY(selectedPO.order_date)}</p>
                         </div>
                         <div>
                           <Label className="text-muted-foreground">Expected Delivery</Label>
-                          <p>{new Date(selectedPO.expected_delivery_date).toLocaleDateString()}</p>
+                          <p>{formatDateDMY(selectedPO.expected_delivery_date)}</p>
                         </div>
                       </div>
                     </CardContent>
@@ -314,10 +316,9 @@ export default function MaterialDeliveriesPage() {
                   <div className="grid grid-cols-3 gap-4">
                     <div>
                       <Label>Delivery Date *</Label>
-                      <Input
-                        type="date"
+                      <DateField
                         value={formData.deliveryDate}
-                        onChange={(e) => setFormData({ ...formData, deliveryDate: e.target.value })}
+                        onChange={(v) => setFormData({ ...formData, deliveryDate: v })}
                         required
                       />
                     </div>
@@ -613,7 +614,7 @@ export default function MaterialDeliveriesPage() {
                   <TableRow key={delivery.id}>
                     <TableCell className="font-medium">{delivery.delivery_number}</TableCell>
                     <TableCell>
-                      {new Date(delivery.delivery_date).toLocaleDateString()}
+                      {formatDateDMY(delivery.delivery_date)}
                       {" "}
                       {delivery.delivery_time}
                     </TableCell>
@@ -660,7 +661,7 @@ export default function MaterialDeliveriesPage() {
                 <div>
                   <Label className="text-muted-foreground">Delivery Date & Time</Label>
                   <p>
-                    {new Date(selectedDelivery.delivery_date).toLocaleDateString()}
+                    {formatDateDMY(selectedDelivery.delivery_date)}
                     {" "}
                     {selectedDelivery.delivery_time}
                   </p>

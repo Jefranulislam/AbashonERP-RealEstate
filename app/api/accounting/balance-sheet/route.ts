@@ -95,11 +95,12 @@ export async function GET(request: NextRequest) {
 
     // Get income/expense heads with their balances (for receivables, payables, etc.)
     const expenseHeads = await sql`
-      SELECT 
+      SELECT
         ieh.id,
         ieh.head_name,
         iet.name as type_name,
-        iet.classification,
+        ieh.account_category,
+        ieh.type,
         (
           COALESCE((
             SELECT SUM(amount)
@@ -157,20 +158,27 @@ export async function GET(request: NextRequest) {
       if (balance === 0) continue
 
       const headName = String(head.head_name || '').toLowerCase()
-      const typeName = (head.type_name || '').toLowerCase()
-      const classification = String(head.classification || '').toLowerCase()
+      // account_category values seeded from the chart of accounts:
+      // "Current Assets", "Fixed Assets", "Current Liabilities",
+      // "Long-term Liab.", "Equity", "Revenue", "Expenses" (+ "* Parent" group rows)
+      const category = String(head.account_category || '').toLowerCase()
 
-      // Classify based on account type and name
-      if (typeName === 'income') {
+      // Income/expense for the current-year P&L figure.
+      // Revenue heads are Cr-normal (credits increase them); expenses Dr-normal.
+      if (category.startsWith('revenue')) {
         totalIncome += balance
-      } else if (typeName === 'expense') {
-        totalExpense += Math.abs(balance)
+        continue
       }
-      
-      // Classification priority: explicit classification -> account type -> keyword fallback.
-      if (classification === 'asset') {
-        if (headName.includes('land') || headName.includes('building') || 
-            headName.includes('machinery') || headName.includes('equipment') || 
+      if (category.startsWith('expense')) {
+        totalExpense += -balance // Dr-normal: debits exceed credits => positive expense
+        continue
+      }
+
+      // Classification priority: explicit account_category -> keyword fallback.
+      if (category.includes('asset')) {
+        if (category.includes('fixed') ||
+            headName.includes('land') || headName.includes('building') ||
+            headName.includes('machinery') || headName.includes('equipment') ||
             headName.includes('vehicle') || headName.includes('furniture')) {
           fixedAssets.push({
             name: head.head_name,
@@ -184,8 +192,9 @@ export async function GET(request: NextRequest) {
             accountId: head.id
           })
         }
-      } else if (classification === 'liability') {
-        if (headName.includes('loan') && (headName.includes('long') || headName.includes('term'))) {
+      } else if (category.includes('liab')) {
+        if (category.includes('long') ||
+            (headName.includes('loan') && (headName.includes('long') || headName.includes('term')))) {
           longTermLiabilities.push({
             name: head.head_name,
             amount: Math.abs(balance),
@@ -198,7 +207,7 @@ export async function GET(request: NextRequest) {
             accountId: head.id
           })
         }
-      } else if (classification === 'equity') {
+      } else if (category.includes('equity')) {
         equityItems.push({
           name: head.head_name,
           amount: Math.abs(balance),

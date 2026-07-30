@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { sql } from "@/lib/db"
 import { getCurrentUser } from "@/lib/auth"
 import { buildVoucherNo } from "@/lib/voucher-utils"
+import { ensureVoucherPaymentSchema } from "@/lib/voucher-schema"
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,45 +11,79 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    await ensureVoucherPaymentSchema()
+
     const searchParams = request.nextUrl.searchParams
     const projectId = searchParams.get("projectId")
     const status = searchParams.get("status")
     const paymentType = searchParams.get("paymentType")
 
-    let query
-    const conditions = ["ap.is_active = true"]
-    const params: any[] = []
-
-    if (projectId && projectId !== "all") {
-      conditions.push(`ap.project_id = ${projectId}`)
-    }
-
-    if (status && status !== "all") {
-      conditions.push(`ap.status = '${status}'`)
-    }
-
-    if (paymentType && paymentType !== "all") {
-      conditions.push(`ap.payment_type = '${paymentType}'`)
-    }
-
-    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : ""
-
-    query = await sql`
-      SELECT 
-        ap.*, 
-        p.project_name, 
-        v.vendor_name, 
-        c.constructor_name
+    const query = await sql`
+      SELECT
+        ap.*,
+        p.project_name,
+        v.vendor_name,
+        c.constructor_name,
+        ieh.head_name as expense_head_name,
+        ieh.account_code as expense_head_code,
+        bca.account_title as bank_cash_name,
+        'advance_payable' as source
       FROM advance_payables ap
       LEFT JOIN projects p ON ap.project_id = p.id
       LEFT JOIN vendors v ON ap.vendor_id = v.id
       LEFT JOIN constructors c ON ap.constructor_id = c.id
+      LEFT JOIN income_expense_heads ieh ON ap.expense_head_id = ieh.id
+      LEFT JOIN bank_cash_accounts bca ON ap.bank_cash_id = bca.id
       WHERE ap.is_active = true
       ORDER BY ap.payment_date DESC, ap.created_at DESC
     `
 
-    // Filter in JavaScript if needed
-    let filteredResults = query
+    // Also surface vendor/contractor payments recorded in OTHER modules
+    // (purchase payments, PO payments) so this page shows the complete
+    // payment history per party. Advance-payable-originated transactions
+    // are excluded (matched by the sync tag in remarks) to avoid duplicates.
+    const externalPayments = await sql`
+      SELECT
+        pt.id,
+        pt.project_id,
+        pt.vendor_id,
+        pt.constructor_id,
+        pt.amount,
+        pt.payment_date,
+        COALESCE(pt.payment_type, 'Payment') as payment_type,
+        pt.payment_method,
+        pt.transaction_reference as reference_number,
+        pt.remarks as description,
+        CASE WHEN pt.payment_status = 'Completed' THEN 'Paid' ELSE COALESCE(pt.payment_status, 'Pending') END as status,
+        pt.is_active,
+        pt.created_at,
+        pt.cheque_number,
+        pt.cheque_date,
+        p.project_name,
+        v.vendor_name,
+        c.constructor_name,
+        ieh.head_name as expense_head_name,
+        ieh.account_code as expense_head_code,
+        bca.account_title as bank_cash_name,
+        po.po_number,
+        pt.payment_number,
+        'transaction' as source
+      FROM payment_transactions pt
+      LEFT JOIN projects p ON pt.project_id = p.id
+      LEFT JOIN vendors v ON pt.vendor_id = v.id
+      LEFT JOIN constructors c ON pt.constructor_id = c.id
+      LEFT JOIN purchase_orders po ON pt.po_id = po.id
+      LEFT JOIN vouchers vo ON pt.voucher_id = vo.id
+      LEFT JOIN income_expense_heads ieh ON vo.expense_head_id = ieh.id
+      LEFT JOIN bank_cash_accounts bca ON pt.bank_account_id = bca.id
+      WHERE pt.is_active = true
+        AND (pt.remarks IS NULL OR pt.remarks NOT LIKE '%[AdvancePayable:%')
+      ORDER BY pt.payment_date DESC, pt.created_at DESC
+    `
+
+    let filteredResults = [...query, ...externalPayments].sort((a: any, b: any) =>
+      String(b.payment_date || "").localeCompare(String(a.payment_date || ""))
+    )
     if (projectId && projectId !== "all") {
       filteredResults = filteredResults.filter((item: any) => item.project_id === parseInt(projectId))
     }
@@ -61,7 +96,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ advancePayables: filteredResults })
   } catch (error) {
-    console.error("[v0] Error fetching advance payables:", error)
+    console.error("Error fetching advance payables:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -74,6 +109,8 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await request.json()
+
+    await ensureVoucherPaymentSchema()
 
     // Validate required fields
     if (!data.projectId || !data.amount || !data.paymentDate) {
@@ -96,19 +133,25 @@ export async function POST(request: NextRequest) {
     const paymentType = data.paymentType || 'Advance'
     const paymentMethod = data.paymentMethod || null
     const paymentStatus = (data.status || 'Pending')
+    const chosenExpenseHeadId = Number(data.expenseHeadId) > 0 ? Number(data.expenseHeadId) : null
+    const chosenBankCashId = Number(data.bankCashId) > 0 ? Number(data.bankCashId) : null
 
     const res = await sql`
       INSERT INTO advance_payables (
-        project_id, 
-        vendor_id, 
-        constructor_id, 
-        amount, 
-        payment_date, 
+        project_id,
+        vendor_id,
+        constructor_id,
+        amount,
+        payment_date,
         payment_type,
         payment_method,
         reference_number,
         description,
         status,
+        expense_head_id,
+        bank_cash_id,
+        cheque_number,
+        cheque_date,
         is_active
       )
       VALUES (
@@ -122,6 +165,10 @@ export async function POST(request: NextRequest) {
         ${data.referenceNumber || null},
         ${data.description || null},
         ${paymentStatus},
+        ${chosenExpenseHeadId},
+        ${chosenBankCashId},
+        ${data.chequeNumber || null},
+        ${data.chequeDate || null},
         ${data.isActive !== false}
       )
       RETURNING *
@@ -132,10 +179,37 @@ export async function POST(request: NextRequest) {
     // Integrate with accounting + payment ledgers so entries appear across modules.
     let voucherId: number | null = null
     try {
+      const isContractor = !data.vendorId && !!data.constructorId
       const partyNameResult = data.vendorId
         ? await sql`SELECT vendor_name AS name FROM vendors WHERE id = ${data.vendorId} LIMIT 1`
         : await sql`SELECT constructor_name AS name FROM constructors WHERE id = ${data.constructorId} LIMIT 1`
       const partyName = partyNameResult[0]?.name || null
+
+      // Head of Account: prefer the head chosen on the form; otherwise fall back
+      // to a head matching the party type — contractor payments are
+      // "Contractor Bill", vendor payments are "Vendor Payment".
+      let expenseHeadId: number | null = chosenExpenseHeadId
+      let headName: string
+      if (chosenExpenseHeadId) {
+        const chosenHead = await sql`
+          SELECT head_name FROM income_expense_heads WHERE id = ${chosenExpenseHeadId} LIMIT 1
+        `
+        headName = chosenHead[0]?.head_name ?? (isContractor ? 'Contractor Bill' : 'Vendor Payment')
+      } else {
+        const headLabel = isContractor ? 'Contractor Bill' : 'Vendor Payment'
+        const headMatch = await sql`
+          SELECT id, head_name FROM income_expense_heads
+          WHERE is_active = true
+            AND (
+              head_name ILIKE ${isContractor ? '%contractor%' : '%vendor%'}
+              OR head_name ILIKE ${headLabel}
+            )
+          ORDER BY (head_name ILIKE ${headLabel}) DESC, id
+          LIMIT 1
+        `
+        expenseHeadId = headMatch[0]?.id ?? null
+        headName = headMatch[0]?.head_name ?? headLabel
+      }
 
       const existingVoucher = await sql`
         SELECT id FROM vouchers WHERE particulars LIKE ${`%${syncTag}%`} LIMIT 1
@@ -153,15 +227,21 @@ export async function POST(request: NextRequest) {
 
         const voucher = await sql`
           INSERT INTO vouchers (
-            voucher_no, voucher_type, project_id, bank_cash_id,
-            date, amount, particulars, is_confirmed, vendor_name, account_head_type
+            voucher_no, voucher_type, project_id, expense_head_id, bank_cash_id,
+            date, amount, particulars, payment_method, cheque_number, cheque_date, is_confirmed,
+            vendor_id, constructor_id, vendor_name, account_head_type
           ) VALUES (
-            ${voucherNo}, 'Debit', ${data.projectId}, ${null},
+            ${voucherNo}, 'Debit', ${data.projectId}, ${expenseHeadId}, ${chosenBankCashId},
             ${paymentDate}, ${amount},
-            ${`${data.description || `Vendor payment (${paymentType})`} ${syncTag}`},
+            ${`${data.description || `${isContractor ? 'Contractor' : 'Vendor'} payment (${paymentType})`} ${syncTag}`},
+            ${paymentMethod},
+            ${data.chequeNumber || null},
+            ${data.chequeDate || null},
             true,
+            ${data.vendorId || null},
+            ${data.constructorId || null},
             ${partyName},
-            'Vendor Payment'
+            ${headName}
           )
           RETURNING id
         `
@@ -191,6 +271,9 @@ export async function POST(request: NextRequest) {
             payment_type,
             payment_method,
             amount,
+            bank_account_id,
+            cheque_number,
+            cheque_date,
             transaction_reference,
             voucher_id,
             receipt_number,
@@ -207,6 +290,9 @@ export async function POST(request: NextRequest) {
             ${paymentType},
             ${paymentMethod},
             ${amount},
+            ${chosenBankCashId},
+            ${data.chequeNumber || null},
+            ${data.chequeDate || null},
             ${data.referenceNumber || null},
             ${voucherId},
             ${paymentNumber},
@@ -218,7 +304,7 @@ export async function POST(request: NextRequest) {
         `
       }
     } catch (syncError) {
-      console.error('[v0] Error: created advance payable but failed ledger sync:', syncError)
+      console.error('Error: created advance payable but failed ledger sync:', syncError)
       await sql`DELETE FROM advance_payables WHERE id = ${advancePayable.id}`
       return NextResponse.json(
         {
@@ -234,7 +320,7 @@ export async function POST(request: NextRequest) {
       advancePayable 
     })
   } catch (error) {
-    console.error("[v0] Error creating advance payable:", error)
+    console.error("Error creating advance payable:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

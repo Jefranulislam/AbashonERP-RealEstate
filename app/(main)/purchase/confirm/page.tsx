@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { formatDateDMY } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -45,7 +46,7 @@ export default function PurchaseConfirmPage() {
       )
       setRequisitions(unconfirmedRequisitions)
     } catch (error) {
-      console.error("[v0] Error fetching requisitions:", error)
+      console.error("Error fetching requisitions:", error)
     } finally {
       setLoading(false)
     }
@@ -62,7 +63,7 @@ export default function PurchaseConfirmPage() {
       setRequisitionItems(response.data.items)
       setViewDialogOpen(true)
     } catch (error) {
-      console.error("[v0] Error fetching requisition details:", error)
+      console.error("Error fetching requisition details:", error)
     }
   }
 
@@ -76,7 +77,7 @@ export default function PurchaseConfirmPage() {
       fetchRequisitions()
       alert("Requisition confirmed successfully!")
     } catch (error) {
-      console.error("[v0] Error confirming requisition:", error)
+      console.error("Error confirming requisition:", error)
       alert("Error confirming requisition. Please try again.")
     }
   }
@@ -89,7 +90,7 @@ export default function PurchaseConfirmPage() {
       fetchRequisitions()
       alert("Requisition rejected successfully!")
     } catch (error) {
-      console.error("[v0] Error rejecting requisition:", error)
+      console.error("Error rejecting requisition:", error)
       alert("Error rejecting requisition. Please try again.")
     }
   }
@@ -149,7 +150,7 @@ export default function PurchaseConfirmPage() {
                   <TableRow key={requisition.id}>
                     <TableCell className="font-medium">{requisition.mpr_no}</TableCell>
                     <TableCell>
-                      {new Date(requisition.requisition_date).toLocaleDateString()}
+                      {formatDateDMY(requisition.requisition_date)}
                       <div className="text-xs text-muted-foreground">
                         {formatDistanceToNow(new Date(requisition.created_at), { addSuffix: true })}
                       </div>
@@ -219,14 +220,14 @@ export default function PurchaseConfirmPage() {
                 <div>
                   <Label>Requisition Date</Label>
                   <p className="text-sm">
-                    {new Date(selectedRequisition.requisition_date).toLocaleDateString()}
+                    {formatDateDMY(selectedRequisition.requisition_date)}
                   </p>
                 </div>
                 <div>
                   <Label>Required Date</Label>
                   <p className="text-sm">
                     {selectedRequisition.required_date
-                      ? new Date(selectedRequisition.required_date).toLocaleDateString()
+                      ? formatDateDMY(selectedRequisition.required_date)
                       : "N/A"}
                   </p>
                 </div>

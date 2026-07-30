@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     const customerId = searchParams.get("customerId")
     const search = searchParams.get("search")
 
-    console.log("[v0] Fetching sales with customerId:", customerId, "search:", search)
+    console.log("Fetching sales with customerId:", customerId, "search:", search)
 
     let sales
 
@@ -87,11 +87,11 @@ export async function GET(request: NextRequest) {
       `
     }
 
-    console.log("[v0] Sales fetched:", sales.length)
+    console.log("Sales fetched:", sales.length)
 
     return NextResponse.json({ sales })
   } catch (error) {
-    console.error("[v0] Error fetching sales:", error)
+    console.error("Error fetching sales:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await request.json()
-    console.log("[v0] Creating sale with data:", data)
+    console.log("Creating sale with data:", data)
 
     const result = await sql`
       INSERT INTO sales (
@@ -120,10 +120,10 @@ export async function POST(request: NextRequest) {
       RETURNING *
     `
 
-    console.log("[v0] Sale created:", result[0])
+    console.log("Sale created:", result[0])
     return NextResponse.json({ success: true, sale: result[0] })
   } catch (error) {
-    console.error("[v0] Error creating sale:", error)
+    console.error("Error creating sale:", error)
     return NextResponse.json({ error: "Internal server error", details: error }, { status: 500 })
   }
 }

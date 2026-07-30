@@ -77,6 +77,13 @@ export async function GET(
       ORDER BY sd.created_at DESC
     `
 
+    // Fetch additional items
+    const additionalItems = await sql`
+      SELECT * FROM sale_additional_items
+      WHERE sale_id = ${id}
+      ORDER BY id ASC
+    `
+
     // Fetch activity log
     const activities = await sql`
       SELECT 
@@ -93,6 +100,7 @@ export async function GET(
       sale: saleResult[0],
       schedules,
       payments,
+      additionalItems,
       documents,
       activities
     })
@@ -156,6 +164,27 @@ export async function PUT(
       WHERE id = ${id}
       RETURNING *
     `
+
+    // Update booking payment record if payment method/bank details were provided
+    if (data.paymentMethod) {
+      await sql`
+        UPDATE sale_payments
+        SET
+          payment_method = ${data.paymentMethod},
+          bank_cash_id   = ${data.bankCashId ? parseInt(data.bankCashId) : null},
+          cheque_number  = ${data.chequeNumber || null},
+          cheque_date    = ${data.chequeDate || null},
+          cheque_bank    = ${data.chequeBank || null},
+          transaction_reference = ${data.transactionReference || null},
+          updated_at     = CURRENT_TIMESTAMP
+        WHERE sale_id = ${id}
+          AND is_active = true
+          AND schedule_id IN (
+            SELECT id FROM sale_payment_schedules
+            WHERE sale_id = ${id} AND schedule_type = 'booking'
+          )
+      `
+    }
 
     // Log status change if changed
     if (data.saleStatus && data.saleStatus !== oldStatus) {

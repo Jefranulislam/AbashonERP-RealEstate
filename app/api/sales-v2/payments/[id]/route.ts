@@ -5,18 +5,13 @@ import { isAdminUser } from "@/lib/admin-access"
 
 // GET - Fetch single payment details
 export async function GET(
-  request: NextRequest, 
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getCurrentUser()
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const isAdmin = await isAdminUser(user.id)
-    if (!isAdmin) {
-      return NextResponse.json({ error: "Only Admin can cancel/delete payments" }, { status: 403 })
     }
 
     const { id } = await params
@@ -116,6 +111,11 @@ export async function DELETE(
     const user = await getCurrentUser()
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const isAdmin = await isAdminUser(user.id)
+    if (!isAdmin) {
+      return NextResponse.json({ error: "Only Admin can cancel/delete payments" }, { status: 403 })
     }
 
     const { id } = await params

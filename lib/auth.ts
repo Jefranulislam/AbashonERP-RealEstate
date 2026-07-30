@@ -32,7 +32,7 @@ export async function getCurrentUser(): Promise<User | null> {
     } catch (parseError) {
       // If it fails, it might be a JWT token from a previous setup
       // For now, just clear it and return null
-      console.log("[v0] Invalid session format, please log in again")
+      console.log("Invalid session format, please log in again")
       return null
     }
 
@@ -51,7 +51,7 @@ export async function getCurrentUser(): Promise<User | null> {
 
     return users[0] as User
   } catch (error) {
-    console.error("[v0] Error getting current user:", error)
+    console.error("Error getting current user:", error)
     return null
   }
 }
@@ -109,7 +109,7 @@ export async function getUserWithPermissions(userId: string): Promise<UserWithPe
       },
     }
   } catch (error) {
-    console.error("[v0] Error getting user with permissions:", error)
+    console.error("Error getting user with permissions:", error)
     return null
   }
 }
@@ -122,7 +122,7 @@ export async function checkPermission(userId: string, permission: string): Promi
 
     return user.permissions[permission] || false
   } catch (error) {
-    console.error("[v0] Error checking permission:", error)
+    console.error("Error checking permission:", error)
     return false
   }
 }

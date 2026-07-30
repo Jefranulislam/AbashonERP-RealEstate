@@ -4,6 +4,7 @@ import { useEffect } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { DateField } from "@/components/ui/date-field"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
@@ -239,11 +240,19 @@ export function LeadFormDialog({
             </div>
             <div className="space-y-2">
               <Label htmlFor="nextCallDate">Next Call Date</Label>
-              <Input id="nextCallDate" type="date" {...form.register("nextCallDate")} />
+              <DateField
+                id="nextCallDate"
+                value={form.watch("nextCallDate")}
+                onChange={(v) => form.setValue("nextCallDate", v)}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="birthDate">Birth Date</Label>
-              <Input id="birthDate" type="date" {...form.register("birthDate")} />
+              <DateField
+                id="birthDate"
+                value={form.watch("birthDate")}
+                onChange={(v) => form.setValue("birthDate", v)}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="fatherOrHusbandName">Father's/Husband's Name</Label>

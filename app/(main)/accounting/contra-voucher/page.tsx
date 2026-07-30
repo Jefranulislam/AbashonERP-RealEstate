@@ -7,6 +7,7 @@ import { Plus, Trash2, Printer, Search, ArrowRightLeft, Banknote, Building2, Arr
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { DateField } from "@/components/ui/date-field"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
@@ -147,7 +148,7 @@ export default function ContraVoucherPage() {
         <head>
           <title>Contra Voucher - ${voucher.voucher_no}</title>
           <style>
-            body { font-family: Arial, sans-serif; padding: 20px; }
+            body { font-family: Inter-tight, Arial, sans-serif; padding: 20px; }
             .header { text-align: center; margin-bottom: 30px; }
             .voucher-info { margin-bottom: 20px; }
             .transfer-details { border: 2px solid #333; padding: 20px; margin: 20px 0; }
@@ -381,10 +382,10 @@ export default function ContraVoucherPage() {
                 {/* Date */}
                 <div className="space-y-2">
                   <Label htmlFor="date">Transfer Date *</Label>
-                  <Input
+                  <DateField
                     id="date"
-                    type="date"
-                    {...form.register("date")}
+                    value={form.watch("date")}
+                    onChange={(v) => form.setValue("date", v)}
                   />
                   {form.formState.errors.date && (
                     <p className="text-sm text-destructive">{form.formState.errors.date.message}</p>

@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { DateField } from "@/components/ui/date-field"
 import { Label } from "@/components/ui/label"
 import {
   Card,
@@ -39,7 +40,7 @@ export default function InitialExpenseHeadPage() {
             </div>
             <div>
               <Label>Date</Label>
-              <Input type="date" />
+              <DateField onChange={() => {}} />
             </div>
           </div>
           <div className="mt-4">

@@ -57,7 +57,7 @@ export default function EmployeesPage() {
       const response = await axios.get("/api/employees")
       setEmployees(response.data.employees)
     } catch (error) {
-      console.error("[v0] Error fetching employees:", error)
+      console.error("Error fetching employees:", error)
       toast({
         title: "Error",
         description: "Failed to fetch employees",
@@ -98,7 +98,7 @@ export default function EmployeesPage() {
         description: "Employee created successfully",
       })
     } catch (error) {
-      console.error("[v0] Error saving employee:", error)
+      console.error("Error saving employee:", error)
       toast({
         title: "Error",
         description: "Failed to save employee",

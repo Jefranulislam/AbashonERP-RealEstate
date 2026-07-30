@@ -3,52 +3,7 @@
 import React from 'react'
 import { PDFTemplate, PDFSection, PDFInfoRow } from '@/components/pdf-template'
 import { formatCurrency, formatDateForPDF } from '@/lib/pdf-utils'
-
-// Number to words conversion for amount in words
-function numberToWords(num: number): string {
-  const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
-    'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen']
-  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety']
-
-  if (num === 0) return 'Zero'
-  if (num < 0) return 'Minus ' + numberToWords(-num)
-
-  let words = ''
-
-  if (Math.floor(num / 10000000) > 0) {
-    words += numberToWords(Math.floor(num / 10000000)) + ' Crore '
-    num %= 10000000
-  }
-
-  if (Math.floor(num / 100000) > 0) {
-    words += numberToWords(Math.floor(num / 100000)) + ' Lakh '
-    num %= 100000
-  }
-
-  if (Math.floor(num / 1000) > 0) {
-    words += numberToWords(Math.floor(num / 1000)) + ' Thousand '
-    num %= 1000
-  }
-
-  if (Math.floor(num / 100) > 0) {
-    words += numberToWords(Math.floor(num / 100)) + ' Hundred '
-    num %= 100
-  }
-
-  if (num > 0) {
-    if (words !== '') words += 'and '
-    if (num < 20) {
-      words += ones[num]
-    } else {
-      words += tens[Math.floor(num / 10)]
-      if (num % 10 > 0) {
-        words += '-' + ones[num % 10]
-      }
-    }
-  }
-
-  return words.trim()
-}
+import { amountToWordsBDT } from '@/lib/payment-utils'
 
 interface MoneyReceiptPDFProps {
   receipt: {
@@ -93,7 +48,7 @@ export function MoneyReceiptPDF({
   footerImage,
   backgroundImage,
 }: MoneyReceiptPDFProps) {
-  const amountInWords = numberToWords(Math.floor(receipt.amount)) + ' Taka Only'
+  const amountInWords = amountToWordsBDT(receipt.amount)
 
   return (
     <PDFTemplate
@@ -133,8 +88,15 @@ export function MoneyReceiptPDF({
       {/* Property Reference */}
       <PDFSection title="Payment For">
         <div className="grid grid-cols-2 gap-4">
-          <PDFInfoRow label="Project" value={receipt.project_name} />
-          <PDFInfoRow label="Unit/Flat" value={receipt.product_name + (receipt.unit_no ? ` (${receipt.unit_no})` : '')} />
+          <PDFInfoRow label="Project" value={receipt.project_name || 'N/A'} />
+          <PDFInfoRow
+            label="Unit/Flat"
+            value={
+              [receipt.product_name, receipt.unit_no ? `(${receipt.unit_no})` : '']
+                .filter(Boolean)
+                .join(' ') || 'N/A'
+            }
+          />
           {receipt.floor_no && (
             <PDFInfoRow label="Floor" value={receipt.floor_no} />
           )}
@@ -158,31 +120,24 @@ export function MoneyReceiptPDF({
       {/* Payment Method Details */}
       <PDFSection title="Payment Details">
         <div className="grid grid-cols-2 gap-4">
-          <PDFInfoRow label="Payment Method" value={receipt.payment_method.toUpperCase()} />
-          
-          {receipt.payment_method === 'cheque' && (
-            <>
-              {receipt.cheque_number && (
-                <PDFInfoRow label="Cheque No" value={receipt.cheque_number} />
-              )}
-              {receipt.cheque_bank && (
-                <PDFInfoRow label="Bank" value={receipt.cheque_bank} />
-              )}
-              {receipt.cheque_date && (
-                <PDFInfoRow label="Cheque Date" value={formatDateForPDF(receipt.cheque_date)} />
-              )}
-            </>
+          <PDFInfoRow label="Payment Method" value={(receipt.payment_method || 'CASH').replace(/_/g, ' ').toUpperCase()} />
+
+          {/* Cheque details — shown whenever the data exists */}
+          {receipt.cheque_number && (
+            <PDFInfoRow label="Cheque No" value={receipt.cheque_number} />
+          )}
+          {receipt.cheque_bank && (
+            <PDFInfoRow label="Bank" value={receipt.cheque_bank} />
+          )}
+          {receipt.cheque_date && (
+            <PDFInfoRow label="Cheque Date" value={formatDateForPDF(receipt.cheque_date)} />
           )}
 
-          {receipt.payment_method === 'bank_transfer' && (
-            <>
-              {receipt.bank_account_name && (
-                <PDFInfoRow label="To Account" value={receipt.bank_account_name} />
-              )}
-              {receipt.transaction_reference && (
-                <PDFInfoRow label="Transaction Ref" value={receipt.transaction_reference} />
-              )}
-            </>
+          {receipt.bank_account_name && (
+            <PDFInfoRow label="To Account" value={receipt.bank_account_name} />
+          )}
+          {receipt.transaction_reference && (
+            <PDFInfoRow label="Transaction Ref" value={receipt.transaction_reference} />
           )}
 
           {receipt.received_by_name && (
@@ -192,12 +147,12 @@ export function MoneyReceiptPDF({
       </PDFSection>
 
       {/* Account Summary */}
-      {receipt.net_price && (
+      {Number(receipt.net_price) > 0 && (
         <PDFSection title="Account Summary">
           <div className="space-y-2">
             <div className="flex justify-between py-2 border-b border-gray-200">
               <span>Total Price:</span>
-              <span>{formatCurrency(receipt.net_price, currencySymbol)}</span>
+              <span>{formatCurrency(Number(receipt.net_price) || 0, currencySymbol)}</span>
             </div>
             <div className="flex justify-between py-2 border-b border-gray-200 text-green-600">
               <span>Total Paid (including this):</span>

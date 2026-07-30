@@ -30,7 +30,7 @@ export default function TransactionsPage() {
       const response = await axios.get(`/api/accounting/vouchers?${params.toString()}`)
       setVouchers(response.data.vouchers)
     } catch (error) {
-      console.error("[v0] Error fetching vouchers:", error)
+      console.error("Error fetching vouchers:", error)
     } finally {
       setLoading(false)
     }
@@ -41,7 +41,7 @@ export default function TransactionsPage() {
       const response = await axios.get("/api/projects")
       setProjects(response.data.projects)
     } catch (error) {
-      console.error("[v0] Error fetching projects:", error)
+      console.error("Error fetching projects:", error)
     }
   }
 
@@ -152,8 +152,8 @@ export default function TransactionsPage() {
                         <TableCell className="max-w-[200px] truncate" title={voucher.account_head_type || voucher.expense_head_name || "-"}>
                           {voucher.account_head_type || voucher.expense_head_name || "-"}
                         </TableCell>
-                        <TableCell className="max-w-[150px] truncate" title={voucher.vendor_name || "-"}>
-                          {voucher.vendor_name || "-"}
+                        <TableCell className="max-w-[150px] truncate" title={voucher.vendor_display_name || voucher.vendor_name || "-"}>
+                          {voucher.vendor_display_name || voucher.vendor_name || "-"}
                         </TableCell>
                         <TableCell className="text-right font-medium text-red-600">
                           {voucher.voucher_type === "Debit" ? formatAmount(voucher.amount) : "-"}
@@ -252,7 +252,7 @@ export default function TransactionsPage() {
                   </TableHeader>
                   <TableBody>
                     <TableRow>
-                      <TableCell className="font-medium">{selectedVoucher.vendor_name || "-"}</TableCell>
+                      <TableCell className="font-medium">{selectedVoucher.vendor_display_name || selectedVoucher.vendor_name || "-"}</TableCell>
                       <TableCell className="text-center">{selectedVoucher.qty || "-"}</TableCell>
                       <TableCell className="text-center">{selectedVoucher.rate || "-"}</TableCell>
                       <TableCell className="text-center">{selectedVoucher.inventory || "-"}</TableCell>

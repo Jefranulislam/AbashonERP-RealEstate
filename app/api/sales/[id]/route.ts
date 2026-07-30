@@ -28,7 +28,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     return NextResponse.json({ success: true, sale: result[0] })
   } catch (error) {
-    console.error("[v0] Error updating sale:", error)
+    console.error("Error updating sale:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -50,7 +50,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("[v0] Error deleting sale:", error)
+    console.error("Error deleting sale:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

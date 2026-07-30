@@ -28,6 +28,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
+import { DateField } from "@/components/ui/date-field"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -418,10 +419,9 @@ export default function ChequesPage() {
         </div>
         <div>
           <Label>Cheque Date *</Label>
-          <Input
-            type="date"
+          <DateField
             value={formData.chequeDate}
-            onChange={(e) => handleInputChange("chequeDate", e.target.value)}
+            onChange={(v) => handleInputChange("chequeDate", v)}
           />
         </div>
       </div>
@@ -429,18 +429,16 @@ export default function ChequesPage() {
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label>Received Date</Label>
-          <Input
-            type="date"
+          <DateField
             value={formData.receivedDate}
-            onChange={(e) => handleInputChange("receivedDate", e.target.value)}
+            onChange={(v) => handleInputChange("receivedDate", v)}
           />
         </div>
         <div>
           <Label>Submitted Date</Label>
-          <Input
-            type="date"
+          <DateField
             value={formData.submittedDate}
-            onChange={(e) => handleInputChange("submittedDate", e.target.value)}
+            onChange={(v) => handleInputChange("submittedDate", v)}
           />
         </div>
       </div>
@@ -448,10 +446,9 @@ export default function ChequesPage() {
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label>Cleared Date</Label>
-          <Input
-            type="date"
+          <DateField
             value={formData.clearedDate}
-            onChange={(e) => handleInputChange("clearedDate", e.target.value)}
+            onChange={(v) => handleInputChange("clearedDate", v)}
           />
         </div>
         <div>

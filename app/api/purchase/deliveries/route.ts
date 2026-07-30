@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ deliveries })
   } catch (error) {
-    console.error("[v0] Error fetching deliveries:", error)
+    console.error("Error fetching deliveries:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, delivery: delivery[0] })
   } catch (error) {
-    console.error("[v0] Error recording delivery:", error)
+    console.error("Error recording delivery:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

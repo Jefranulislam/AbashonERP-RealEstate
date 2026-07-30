@@ -27,7 +27,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     return NextResponse.json({ success: true, constructor: result[0] })
   } catch (error) {
-    console.error("[v0] Error updating constructor:", error)
+    console.error("Error updating constructor:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

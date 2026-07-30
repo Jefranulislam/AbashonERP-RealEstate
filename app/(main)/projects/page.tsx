@@ -3,8 +3,10 @@
 import type React from "react"
 
 import { useEffect, useState } from "react"
+import { formatDateDMY } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { DateField } from "@/components/ui/date-field"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
@@ -48,7 +50,7 @@ export default function ProjectsPage() {
       const response = await axios.get("/api/projects")
       setProjects(response.data.projects)
     } catch (error) {
-      console.error("[v0] Error fetching projects:", error)
+      console.error("Error fetching projects:", error)
     } finally {
       setLoading(false)
     }
@@ -59,7 +61,7 @@ export default function ProjectsPage() {
       const response = await axios.get("/api/projects/locations")
       setLocations(response.data.locations)
     } catch (error) {
-      console.error("[v0] Error fetching locations:", error)
+      console.error("Error fetching locations:", error)
     }
   }
 
@@ -89,7 +91,7 @@ export default function ProjectsPage() {
       setDialogOpen(false)
       resetForm()
     } catch (error) {
-      console.error("[v0] Error saving project:", error)
+      console.error("Error saving project:", error)
       toast({
         title: "Error",
         description: "Failed to save project",
@@ -114,7 +116,7 @@ export default function ProjectsPage() {
       })
       fetchProjects()
     } catch (error) {
-      console.error("[v0] Error deleting project:", error)
+      console.error("Error deleting project:", error)
       toast({
         title: "Error",
         description: "Failed to delete project",
@@ -230,20 +232,18 @@ export default function ProjectsPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="projectLaunchingDate">Launching Date</Label>
-                  <Input
+                  <DateField
                     id="projectLaunchingDate"
-                    type="date"
                     value={formData.projectLaunchingDate}
-                    onChange={(e) => setFormData({ ...formData, projectLaunchingDate: e.target.value })}
+                    onChange={(v) => setFormData({ ...formData, projectLaunchingDate: v })}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="handOverDate">Hand Over Date</Label>
-                  <Input
+                  <DateField
                     id="handOverDate"
-                    type="date"
                     value={formData.handOverDate}
-                    onChange={(e) => setFormData({ ...formData, handOverDate: e.target.value })}
+                    onChange={(v) => setFormData({ ...formData, handOverDate: v })}
                   />
                 </div>
               </div>
@@ -319,11 +319,11 @@ export default function ProjectsPage() {
                         <TableCell>{project.land_area}</TableCell>
                         <TableCell>
                           {project.project_launching_date
-                            ? new Date(project.project_launching_date).toLocaleDateString()
+                            ? formatDateDMY(project.project_launching_date)
                             : "-"}
                         </TableCell>
                         <TableCell>
-                          {project.hand_over_date ? new Date(project.hand_over_date).toLocaleDateString() : "-"}
+                          {project.hand_over_date ? formatDateDMY(project.hand_over_date) : "-"}
                         </TableCell>
                         <TableCell>
                           <Badge variant={project.is_active ? "default" : "secondary"}>

@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const search = searchParams.get("search")
 
-    console.log("[v0] Fetching constructors with search:", search)
+    console.log("Fetching constructors with search:", search)
 
     let constructors
 
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ constructors })
   } catch (error) {
-    console.error("[v0] Error fetching constructors:", error)
+    console.error("Error fetching constructors:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await request.json()
-    console.log("[v0] Creating constructor:", data)
+    console.log("Creating constructor:", data)
 
     const result = await sql`
       INSERT INTO constructors (
@@ -63,10 +63,10 @@ export async function POST(request: NextRequest) {
       RETURNING *
     `
 
-    console.log("[v0] Constructor created:", result[0])
+    console.log("Constructor created:", result[0])
     return NextResponse.json({ success: true, constructor: result[0] })
   } catch (error) {
-    console.error("[v0] Error creating constructor:", error)
+    console.error("Error creating constructor:", error)
     return NextResponse.json({ error: "Internal server error", details: error }, { status: 500 })
   }
 }

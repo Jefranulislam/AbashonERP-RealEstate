@@ -25,7 +25,7 @@ export async function executeQuery<T>(query: string, params: any[] = []): Promis
     return result as T[]
   } catch (error) {
     const duration = Date.now() - start
-    console.error("[v0] Database query error:", { error, duration, query: typeof query === 'string' ? query.slice(0, 300) : undefined })
+    console.error("Database query error:", { error, duration, query: typeof query === 'string' ? query.slice(0, 300) : undefined })
     throw error
   }
 }

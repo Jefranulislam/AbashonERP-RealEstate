@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { DateField } from "@/components/ui/date-field"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 
@@ -25,11 +26,11 @@ export default function PurchasePaymentReportPage() {
             </div>
             <div>
               <Label>From Date</Label>
-              <Input type="date" />
+              <DateField value="" onChange={() => {}} />
             </div>
             <div>
               <Label>To Date</Label>
-              <Input type="date" />
+              <DateField value="" onChange={() => {}} />
             </div>
           </div>
           <div className="text-sm text-muted-foreground">No data. This feature will be available soon.</div>

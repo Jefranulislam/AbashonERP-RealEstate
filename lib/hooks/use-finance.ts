@@ -125,6 +125,27 @@ export function useVendors() {
   })
 }
 
+// ============ Constructors ============
+
+export function useConstructors() {
+  return useQuery({
+    queryKey: ["constructors"],
+    queryFn: async () => {
+      const res = await fetch("/api/constructors")
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || "Failed to fetch constructors")
+      }
+      const data = await res.json()
+      return data.constructors || []
+    },
+    staleTime: 5 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    gcTime: 10 * 60 * 1000,
+  })
+}
+
 // ============ Expense Heads ============
 
 export function useExpenseHeads() {

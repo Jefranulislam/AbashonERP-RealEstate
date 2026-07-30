@@ -3,10 +3,11 @@
 import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Plus, Trash2, Printer, Search, ArrowUpDown } from "lucide-react"
+import { Plus, Trash2, Printer, Search, Eye } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { DateField } from "@/components/ui/date-field"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
@@ -21,6 +22,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Skeleton } from "@/components/ui/skeleton"
+import { SortableHeader } from "@/components/ui/sortable-header"
 import { formatDateDMY } from "@/lib/utils"
 
 import { creditVoucherSchema, type CreditVoucherFormData } from "@/lib/validations/accounting"
@@ -30,7 +32,10 @@ import { useExpenseHeads } from "@/lib/hooks/use-finance"
 import { useBankCashAccounts } from "@/lib/hooks/use-finance"
 import { useVendors } from "@/lib/hooks/use-finance"
 import { useUIStore } from "@/lib/stores/ui-store"
-import { AccountingVoucherPDF } from "@/components/pdf/accounting-voucher-pdf"
+import { useSortable } from "@/lib/hooks/use-sortable"
+import { VoucherViewModal } from "@/components/accounting/voucher-view-modal"
+import { voucherToViewData, voucherToReceiptData } from "@/lib/voucher-view-mappers"
+import { VoucherReceiptPDF } from "@/components/pdf/voucher-receipt-pdf"
 import { printDocument, getCompanySettings } from "@/lib/pdf-utils"
 
 const DIALOG_ID = "credit-voucher-form"
@@ -39,9 +44,10 @@ export default function CreditVoucherPage() {
   const [projectFilter, setProjectFilter] = useState<number>()
   const [searchTerm, setSearchTerm] = useState("")
   const [printDialogOpen, setPrintDialogOpen] = useState(false)
-  const [selectedVoucher, setSelectedVoucher] = useState<any>(null)
+  const [printData, setPrintData] = useState<any>(null)
+  const [viewOpen, setViewOpen] = useState(false)
+  const [viewData, setViewData] = useState<any>(null)
   const [companySettings, setCompanySettings] = useState<any>(null)
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
   // UI State
   const { dialogs, openDialog, closeDialog } = useUIStore()
@@ -77,7 +83,7 @@ export default function CreditVoucherPage() {
     },
   })
 
-  // Filter and sort vouchers
+  // Filter vouchers
   const filteredVouchers = vouchers.filter((voucher) => {
     if (!searchTerm) return true
     const search = searchTerm.toLowerCase()
@@ -87,19 +93,40 @@ export default function CreditVoucherPage() {
       voucher.expense_head_name?.toLowerCase().includes(search) ||
       voucher.bill_no?.toLowerCase().includes(search)
     )
-  }).sort((a: any, b: any) => {
-    const dateA = new Date(a.date).getTime()
-    const dateB = new Date(b.date).getTime()
-    return sortOrder === 'asc' ? dateA - dateB : dateB - dateA
   })
 
+  // Sortable table (Date + Voucher No)
+  const { sorted: sortedVouchers, sort, requestSort } = useSortable(
+    filteredVouchers,
+    {
+      date: (v: any) => v.date,
+      voucher_no: (v: any) => v.voucher_no,
+    },
+    { key: "date", direction: "desc" },
+  )
+
   // Calculate total amount
-  const totalAmount = filteredVouchers.reduce((sum: number, voucher: any) => sum + Number(voucher.amount), 0)
+  const totalAmount = sortedVouchers.reduce((sum: number, voucher: any) => sum + Number(voucher.amount), 0)
+
+  // Income/credit heads for the form. If none match (legacy data stores heads as
+  // 'Dr'), fall back to the full list so the required dropdown is never empty.
+  const creditHeads = (() => {
+    const filtered = expenseHeads.filter((head: any) =>
+      head.type === 'Cr' || head.type === 'cr' || head.type === 'CR' ||
+      head.type_name?.toLowerCase().includes('income') ||
+      head.type_name?.toLowerCase().includes('revenue') ||
+      head.type_name?.toLowerCase().includes('credit'),
+    )
+    return filtered.length > 0 ? filtered : expenseHeads
+  })()
 
   // Form submission
   async function onSubmit(data: CreditVoucherFormData) {
     try {
-      await createVoucher.mutateAsync(data)
+      // Denormalize the selected head name so the voucher always displays a
+      // Head of Account even if the FK join later breaks or the head is renamed.
+      const head = expenseHeads.find((h: any) => h.id === Number(data.expenseHeadId))
+      await createVoucher.mutateAsync({ ...data, accountHeadType: head?.head_name })
       form.reset()
       closeDialog(DIALOG_ID)
     } catch (error) {
@@ -123,49 +150,16 @@ export default function CreditVoucherPage() {
     await deleteVoucher.mutateAsync(id)
   }
 
-  // Print handler
-  function handlePrint(voucher: any) {
-    // Transform voucher data to match PDF component structure
-    const voucherForPDF = {
-      voucher_no: voucher.voucher_no,
-      voucher_date: voucher.date,
-      voucher_type: 'credit' as const,
-      total_amount: voucher.amount,
-      narration: voucher.particulars,
-      created_by: voucher.created_by_name,
-    }
-
-    // Create entries array (credit voucher has one debit to bank/cash and one credit to income)
-    const entries = [
-      {
-        ledger_name: voucher.bank_cash_name,
-        head_type: 'Bank/Cash',
-        debit: voucher.amount,
-        credit: 0,
-        narration: voucher.particulars,
-      },
-      {
-        ledger_name: voucher.expense_head_name,
-        head_type: 'Income',
-        debit: 0,
-        credit: voucher.amount,
-        narration: voucher.particulars,
-      },
-    ]
-
-    setSelectedVoucher({ 
-      voucher: voucherForPDF, 
-      entries,
-      originalVoucher: voucher // Keep original data for professional templates
-    })
-    setPrintDialogOpen(true)
-    // Don't auto-print, let user choose mode first
+  // View handler — open the shared detail modal
+  function handleView(voucher: any) {
+    setViewData(voucherToViewData(voucher, { documentTitle: "Credit Voucher", partyLabel: "Customer" }))
+    setViewOpen(true)
   }
 
-  // Convert amount to words (simple implementation)
-  function convertToWords(amount: number): string {
-    const formatter = new Intl.NumberFormat('en-BD')
-    return `${formatter.format(amount)} Taka Only`
+  // Print handler — build the client-facing receipt (no ledger entries)
+  function handlePrint(voucher: any) {
+    setPrintData(voucherToReceiptData(voucher, { documentTitle: "Credit Voucher", partyLabel: "Customer" }))
+    setPrintDialogOpen(true)
   }
 
   // Handle print function
@@ -254,9 +248,9 @@ export default function CreditVoucherPage() {
                   )}
                 </div>
 
-                {/* Head of Account */}
+                {/* Head of Account - only income/credit heads */}
                 <div className="space-y-2">
-                  <Label htmlFor="expenseHeadId">Head of Account *</Label>
+                  <Label htmlFor="expenseHeadId">Head of Account (Income) *</Label>
                   <Select
                     value={form.watch("expenseHeadId")?.toString()}
                     onValueChange={(value) => form.setValue("expenseHeadId", parseInt(value))}
@@ -268,42 +262,18 @@ export default function CreditVoucherPage() {
                       {expenseHeadsLoading ? (
                         <SelectItem value="loading" disabled>Loading...</SelectItem>
                       ) : (
-                        expenseHeads.map((head: any) => (
-                          <SelectItem key={head.id} value={head.id.toString()}>
-                            {head.head_name}
-                          </SelectItem>
-                        ))
+                        creditHeads
+                          .map((head: any) => (
+                            <SelectItem key={head.id} value={head.id.toString()}>
+                              {head.account_code ? `[${head.account_code}] ` : ''}{head.head_name}
+                            </SelectItem>
+                          ))
                       )}
                     </SelectContent>
                   </Select>
                   {form.formState.errors.expenseHeadId && (
                     <p className="text-sm text-destructive">{form.formState.errors.expenseHeadId.message}</p>
                   )}
-                </div>
-
-                {/* Vendor Name */}
-                <div className="space-y-2">
-                  <Label htmlFor="vendorId">Vendor Name</Label>
-                  <Select
-                    value={form.watch("vendorId")?.toString() ?? ""}
-                    onValueChange={(value) => form.setValue("vendorId", value === "none" ? 0 : parseInt(value))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select vendor" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">-- No Vendor --</SelectItem>
-                      {vendorsLoading ? (
-                        <SelectItem value="loading" disabled>Loading...</SelectItem>
-                      ) : (
-                        vendors.map((vendor: any) => (
-                          <SelectItem key={vendor.id} value={vendor.id.toString()}>
-                            {vendor.vendor_name} (ID: {vendor.id})
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
                 </div>
 
                 {/* M.R/Bill No */}
@@ -319,10 +289,10 @@ export default function CreditVoucherPage() {
                 {/* Date */}
                 <div className="space-y-2">
                   <Label htmlFor="date">Date *</Label>
-                  <Input
+                  <DateField
                     id="date"
-                    type="date"
-                    {...form.register("date")}
+                    value={form.watch("date")}
+                    onChange={(v) => form.setValue("date", v)}
                   />
                   {form.formState.errors.date && (
                     <p className="text-sm text-destructive">{form.formState.errors.date.message}</p>
@@ -476,7 +446,7 @@ export default function CreditVoucherPage() {
         <CardHeader>
           <CardTitle>Credit Vouchers</CardTitle>
           <CardDescription>
-            View and manage all credit vouchers ({filteredVouchers.length} records)
+            View and manage all credit vouchers ({sortedVouchers.length} records)
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -494,37 +464,32 @@ export default function CreditVoucherPage() {
                     <TableHead>SL No.</TableHead>
                     <TableHead>Project Name</TableHead>
                     <TableHead>
-                      <Button
-                        variant="ghost"
-                        onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                        className="h-8 px-2"
-                      >
-                        Date
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                      </Button>
+                      <SortableHeader label="Date" sortKey="date" sort={sort} onSort={requestSort} />
                     </TableHead>
                     <TableHead>Head of Account</TableHead>
                     <TableHead>Bill No</TableHead>
-                    <TableHead>Voucher No</TableHead>
+                    <TableHead>
+                      <SortableHeader label="Voucher No" sortKey="voucher_no" sort={sort} onSort={requestSort} />
+                    </TableHead>
                     <TableHead>Made of Payment</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredVouchers.length === 0 ? (
+                  {sortedVouchers.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                         No credit vouchers found. Create your first voucher to get started.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredVouchers.map((voucher, index) => (
+                    sortedVouchers.map((voucher, index) => (
                       <TableRow key={voucher.id}>
                         <TableCell>{index + 1}</TableCell>
                         <TableCell>{voucher.project_name}</TableCell>
                         <TableCell>{formatDateDMY(voucher.date)}</TableCell>
-                        <TableCell>{voucher.expense_head_name}</TableCell>
+                        <TableCell>{voucher.expense_head_name || "-"}</TableCell>
                         <TableCell>{voucher.bill_no || "-"}</TableCell>
                         <TableCell className="font-medium">{voucher.voucher_no}</TableCell>
                         <TableCell>{voucher.bank_cash_name}</TableCell>
@@ -533,6 +498,14 @@ export default function CreditVoucherPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleView(voucher)}
+                              title="View"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
                             <Button
                               variant="ghost"
                               size="icon"
@@ -555,7 +528,7 @@ export default function CreditVoucherPage() {
                       </TableRow>
                     ))
                   )}
-                  {filteredVouchers.length > 0 && (
+                  {sortedVouchers.length > 0 && (
                     <TableRow className="bg-muted/50 font-semibold">
                       <TableCell colSpan={7} className="text-right">Total:</TableCell>
                       <TableCell className="text-right font-bold">
@@ -571,46 +544,42 @@ export default function CreditVoucherPage() {
         </CardContent>
       </Card>
 
-      {/* Hidden Print Content */}
+      {/* View Details Modal */}
+      <VoucherViewModal
+        open={viewOpen}
+        onOpenChange={setViewOpen}
+        data={viewData}
+        currencySymbol={companySettings?.currency_symbol}
+      />
+
+      {/* Print confirmation */}
+      {printDialogOpen && (
+        <Dialog open={printDialogOpen} onOpenChange={setPrintDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Print Credit Voucher</DialogTitle>
+              <DialogDescription>
+                Generate a client-facing payment voucher receipt.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex gap-2">
+              <Button onClick={executePrint} className="flex-1">
+                <Printer className="mr-2 h-4 w-4" /> Print Voucher
+              </Button>
+              <Button variant="outline" onClick={() => setPrintDialogOpen(false)}>
+                Cancel
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Hidden Print Content — client-facing receipt (no ledger entries) */}
       <div className="hidden">
-        {/* Print Mode Selection Dialog */}
-        {printDialogOpen && (
-          <Dialog open={printDialogOpen} onOpenChange={setPrintDialogOpen}>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle>Choose Print Format</DialogTitle>
-                <DialogDescription>
-                  Select how you want to print this credit voucher
-                </DialogDescription>
-              </DialogHeader>
-              
-              <div className="space-y-4">
-                <div className="text-center">
-                  <div className="font-semibold">📊 Accountant Voucher</div>
-                  <div className="text-sm text-muted-foreground">
-                    Internal accounting voucher with debit/credit entries
-                  </div>
-                </div>
-
-                <div className="flex gap-2">
-                  <Button onClick={executePrint} className="flex-1">
-                    🖨️ Print Voucher
-                  </Button>
-                  <Button variant="outline" onClick={() => setPrintDialogOpen(false)}>
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-        )}
-
-        {/* Accountant View - Traditional Voucher */}
-        {printDialogOpen && selectedVoucher && companySettings && (
+        {printDialogOpen && printData && companySettings && (
           <div id="print-voucher-content">
-            <AccountingVoucherPDF
-              voucher={selectedVoucher.voucher}
-              entries={selectedVoucher.entries}
+            <VoucherReceiptPDF
+              data={printData}
               companyName={companySettings.company_name}
               companyAddress={companySettings.address}
               currencySymbol={companySettings.currency_symbol}

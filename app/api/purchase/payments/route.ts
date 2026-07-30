@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { sql } from "@/lib/db"
 import { getCurrentUser } from "@/lib/auth"
 import { buildVoucherNo } from "@/lib/voucher-utils"
+import { ensureVoucherPaymentSchema } from "@/lib/voucher-schema"
 
 export const runtime = 'edge'
 
@@ -21,14 +22,21 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status")
 
     let query = sql`
-      SELECT 
+      SELECT
         pt.*,
+        pt.payment_status as status,
+        pt.transaction_reference as reference_number,
         po.po_number,
         v.vendor_name,
+        v.mailing_address as vendor_address,
+        v.phone as vendor_phone,
+        v.email as vendor_email,
         c.constructor_name,
         p.project_name,
         bca.account_title as bank_account_name,
-        e.name as verified_by_name
+        e.name as verified_by_name,
+        vo.voucher_no as voucher_number,
+        COALESCE(ieh.head_name, NULLIF(TRIM(vo.account_head_type), '')) as head_of_account
       FROM payment_transactions pt
       LEFT JOIN purchase_orders po ON pt.po_id = po.id
       LEFT JOIN vendors v ON pt.vendor_id = v.id
@@ -36,6 +44,8 @@ export async function GET(request: NextRequest) {
       LEFT JOIN projects p ON pt.project_id = p.id
       LEFT JOIN bank_cash_accounts bca ON pt.bank_account_id = bca.id
       LEFT JOIN employees e ON pt.verified_by = e.id
+      LEFT JOIN vouchers vo ON pt.voucher_id = vo.id
+      LEFT JOIN income_expense_heads ieh ON vo.expense_head_id = ieh.id
       WHERE pt.is_active = true
     `
 
@@ -51,7 +61,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ payments })
   } catch (error) {
-    console.error("[v0] Error fetching payments:", error)
+    console.error("Error fetching payments:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -65,6 +75,8 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await request.json()
+
+    await ensureVoucherPaymentSchema()
 
     // Generate payment number
     const lastPayment = await sql`
@@ -85,6 +97,15 @@ export async function POST(request: NextRequest) {
       `
       const voucherNo = buildVoucherNo('Debit', Number(voucherCount[0].count) + 1, year)
 
+      // Denormalize party name + head so the voucher prints correctly on its own
+      const isContractor = !data.vendorId && !!data.constructorId
+      const partyNameResult = data.vendorId
+        ? await sql`SELECT vendor_name AS name FROM vendors WHERE id = ${data.vendorId} LIMIT 1`
+        : data.constructorId
+          ? await sql`SELECT constructor_name AS name FROM constructors WHERE id = ${data.constructorId} LIMIT 1`
+          : []
+      const partyName = partyNameResult[0]?.name || data.referencePartyName || null
+
       const voucher = await sql`
         INSERT INTO vouchers (
           voucher_no,
@@ -95,7 +116,13 @@ export async function POST(request: NextRequest) {
           date,
           amount,
           particulars,
+          payment_method,
           cheque_number,
+          cheque_date,
+          vendor_id,
+          constructor_id,
+          vendor_name,
+          account_head_type,
           is_confirmed
         ) VALUES (
           ${voucherNo},
@@ -106,7 +133,13 @@ export async function POST(request: NextRequest) {
           ${data.paymentDate},
           ${data.amount},
           ${data.remarks || 'Payment for PO: ' + data.poNumber},
+          ${data.paymentMethod || null},
           ${data.chequeNumber || null},
+          ${data.chequeDate || null},
+          ${data.vendorId || null},
+          ${data.constructorId || null},
+          ${partyName},
+          ${isContractor ? 'Contractor Bill' : 'Vendor Payment'},
           true
         )
         RETURNING id
@@ -114,10 +147,12 @@ export async function POST(request: NextRequest) {
       voucherId = voucher[0].id
     }
 
-    // Validate party data - must have either vendor_id or reference_party_name
-    if (!data.vendorId && !data.referencePartyName) {
+    // Validate party data - must have a vendor, a contractor, or a reference party name.
+    // A PO is raised to EITHER a vendor OR a contractor, so a contractor payment carries
+    // constructorId (not vendorId) and must be accepted here.
+    if (!data.vendorId && !data.constructorId && !data.referencePartyName) {
       return NextResponse.json(
-        { error: "Either vendor or reference party name must be provided" },
+        { error: "A vendor, contractor, or reference party name must be provided" },
         { status: 400 }
       )
     }
@@ -216,7 +251,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, payment: payment[0] })
   } catch (error) {
-    console.error("[v0] Error recording payment:", error)
+    console.error("Error recording payment:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

@@ -134,9 +134,9 @@ export async function GET(request: NextRequest) {
     let projectSummary = null
     if (projectId) {
       const projectData = await sql`
-        SELECT 
+        SELECT
           p.project_name,
-          pl.location_name,
+          pl.name as location_name,
           COUNT(DISTINCT v.id) as transaction_count,
           SUM(CASE WHEN v.voucher_type = 'Debit' THEN v.amount ELSE 0 END) as total_expenses,
           SUM(CASE WHEN v.voucher_type = 'Credit' THEN v.amount ELSE 0 END) as total_income
@@ -146,7 +146,7 @@ export async function GET(request: NextRequest) {
         WHERE p.id = ${projectId}
           ${fromDate ? sql`AND v.date >= ${fromDate}` : sql``}
           ${toDate ? sql`AND v.date <= ${toDate}` : sql``}
-        GROUP BY p.id, p.project_name, pl.location_name
+        GROUP BY p.id, p.project_name, pl.name
       `
 
       if (projectData.length > 0) {

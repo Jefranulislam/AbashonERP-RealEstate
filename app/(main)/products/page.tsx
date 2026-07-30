@@ -63,10 +63,10 @@ export default function ProductsPage() {
   const fetchProducts = async () => {
     try {
       const response = await axios.get("/api/products")
-      console.log("[v0] Products fetched:", response.data)
+      console.log("Products fetched:", response.data)
       setProducts(response.data.products || [])
     } catch (error) {
-      console.error("[v0] Error fetching products:", error)
+      console.error("Error fetching products:", error)
       toast({
         title: "Error",
         description: "Failed to fetch products",
@@ -82,7 +82,7 @@ export default function ProductsPage() {
       const response = await axios.get("/api/projects")
       setProjects(response.data.projects || [])
     } catch (error) {
-      console.error("[v0] Error fetching projects:", error)
+      console.error("Error fetching projects:", error)
     }
   }
 
@@ -99,7 +99,7 @@ export default function ProductsPage() {
         setProductTypes(["Residential", "Commercial", "Apartment", "Studio", "Parking", "Gas Line", "Others"])
       }
     } catch (error) {
-      console.error("[v0] Error fetching settings:", error)
+      console.error("Error fetching settings:", error)
       setProductTypes(["Residential", "Commercial", "Apartment", "Studio", "Parking", "Gas Line", "Others"])
     }
   }
@@ -140,7 +140,7 @@ export default function ProductsPage() {
       setDialogOpen(false)
       resetForm()
     } catch (error) {
-      console.error("[v0] Error saving product:", error)
+      console.error("Error saving product:", error)
       toast({
         title: "Error",
         description: "Failed to save product",
@@ -165,7 +165,7 @@ export default function ProductsPage() {
       })
       fetchProducts()
     } catch (error) {
-      console.error("[v0] Error deleting product:", error)
+      console.error("Error deleting product:", error)
       toast({
         title: "Error",
         description: "Failed to delete product",

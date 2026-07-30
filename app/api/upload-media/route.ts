@@ -24,8 +24,8 @@ async function uploadToWordPress(file: File, filename: string): Promise<{success
     formData.append('title', filename)
     formData.append('slug', `${filename}-${Date.now()}`)
 
-    console.log(`[v0] Attempting upload to ${wpConfig.siteUrl}/wp-json/wp/v2/media`)
-    console.log(`[v0] Auth header created for user: ${wpConfig.username}`)
+    console.log(`Attempting upload to ${wpConfig.siteUrl}/wp-json/wp/v2/media`)
+    console.log(`Auth header created for user: ${wpConfig.username}`)
 
     // Upload to WordPress
     const response = await fetch(`${wpConfig.siteUrl}/wp-json/wp/v2/media`, {
@@ -36,11 +36,11 @@ async function uploadToWordPress(file: File, filename: string): Promise<{success
       body: formData
     })
 
-    console.log(`[v0] WordPress response status: ${response.status}`)
+    console.log(`WordPress response status: ${response.status}`)
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('[v0] WordPress upload failed:', response.status, errorText)
+      console.error('WordPress upload failed:', response.status, errorText)
       
       return {
         success: false,
@@ -49,7 +49,7 @@ async function uploadToWordPress(file: File, filename: string): Promise<{success
     }
 
     const result = await response.json()
-    console.log('[v0] WordPress upload success:', result.source_url)
+    console.log('WordPress upload success:', result.source_url)
     
     return {
       success: true,
@@ -57,7 +57,7 @@ async function uploadToWordPress(file: File, filename: string): Promise<{success
     }
 
   } catch (error) {
-    console.error('[v0] WordPress upload exception:', error)
+    console.error('WordPress upload exception:', error)
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown upload error'
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
       }, { status: 413 })
     }
 
-    console.log(`[v0] Uploading ${imageType}:`, file.name, `(${Math.round(file.size/1024)}KB)`)
+    console.log(`Uploading ${imageType}:`, file.name, `(${Math.round(file.size/1024)}KB)`)
 
     // Generate filename with timestamp
     const timestamp = Date.now()
@@ -109,13 +109,13 @@ export async function POST(request: NextRequest) {
     const uploadResult = await uploadToWordPress(file, filename)
 
     if (!uploadResult.success) {
-      console.error('[v0] WordPress upload failed:', uploadResult.error)
+      console.error('WordPress upload failed:', uploadResult.error)
       return NextResponse.json({ 
         error: `Upload failed: ${uploadResult.error}` 
       }, { status: 500 })
     }
 
-    console.log(`[v0] Successfully uploaded to WordPress:`, uploadResult.url)
+    console.log(`Successfully uploaded to WordPress:`, uploadResult.url)
 
     return NextResponse.json({
       success: true,
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error("[v0] Media upload error:", error)
+    console.error("Media upload error:", error)
     return NextResponse.json({ 
       error: "Internal server error: " + (error instanceof Error ? error.message : "Unknown error")
     }, { status: 500 })

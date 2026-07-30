@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { DateField } from "@/components/ui/date-field"
 import { Label } from "@/components/ui/label"
 import {
   BarChart,
@@ -151,20 +152,18 @@ export default function CRMReportsPage() {
           <div className="flex flex-wrap items-end gap-4">
             <div className="space-y-2">
               <Label htmlFor="from">From Date</Label>
-              <Input
+              <DateField
                 id="from"
-                type="date"
                 value={dateRange.from}
-                onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
+                onChange={(v) => setDateRange({ ...dateRange, from: v })}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="to">To Date</Label>
-              <Input
+              <DateField
                 id="to"
-                type="date"
                 value={dateRange.to}
-                onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
+                onChange={(v) => setDateRange({ ...dateRange, to: v })}
               />
             </div>
             <Button onClick={fetchReport} disabled={isLoading}>

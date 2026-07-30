@@ -23,7 +23,7 @@ export async function GET() {
 
     return NextResponse.json({ bankCashAccounts })
   } catch (error) {
-    console.error("[v0] Error fetching bank/cash accounts:", error)
+    console.error("Error fetching bank/cash accounts:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, account: result[0] })
   } catch (error) {
-    console.error("[v0] Error creating bank/cash account:", error)
+    console.error("Error creating bank/cash account:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

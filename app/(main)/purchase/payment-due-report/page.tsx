@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { useEffect, useState } from "react"
+import { formatDateDMY } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -165,7 +166,7 @@ export default function PaymentDueReportPage() {
         parseFloat(payment.scheduled_amount).toFixed(2),
         parseFloat(payment.paid_amount || 0).toFixed(2),
         parseFloat(payment.due_amount).toFixed(2),
-        new Date(payment.due_date).toLocaleDateString(),
+        formatDateDMY(payment.due_date),
         diffDays,
         payment.status,
       ].join(",")
@@ -380,7 +381,7 @@ export default function PaymentDueReportPage() {
                       <TableCell className="font-bold text-red-600">
                         ৳ {parseFloat(payment.due_amount).toFixed(2)}
                       </TableCell>
-                      <TableCell>{new Date(payment.due_date).toLocaleDateString()}</TableCell>
+                      <TableCell>{formatDateDMY(payment.due_date)}</TableCell>
                       <TableCell>
                         <span className={
                           diffDays < 0 ? "text-red-600 font-bold" :

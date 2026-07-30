@@ -38,7 +38,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     return NextResponse.json({ requisition: requisitions[0], items })
   } catch (error) {
-    console.error("[v0] Error fetching requisition:", error)
+    console.error("Error fetching requisition:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -57,7 +57,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("[v0] Error deleting requisition:", error)
+    console.error("Error deleting requisition:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -87,7 +87,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     return NextResponse.json({ success: true, requisition: result[0] })
   } catch (error) {
-    console.error("[v0] Error updating requisition:", error)
+    console.error("Error updating requisition:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

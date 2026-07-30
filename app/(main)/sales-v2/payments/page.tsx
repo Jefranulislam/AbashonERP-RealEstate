@@ -3,8 +3,10 @@
 import type React from "react"
 import { useEffect, useState } from "react"
 import { printDocument } from "@/lib/pdf-utils"
+import { formatDateDMY } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { DateField } from "@/components/ui/date-field"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
@@ -24,6 +26,7 @@ import { Plus, Search, Printer, DollarSign, Calendar, AlertTriangle, CreditCard,
 import axios from "axios"
 import { useToast } from "@/hooks/use-toast"
 import { useCurrency } from "@/hooks/use-currency"
+import { amountToWordsBDT, normalizePaymentMethod } from "@/lib/payment-utils"
 import { CustomerReceipt } from "@/components/customer-receipt"
 
 interface PaymentSchedule {
@@ -78,6 +81,10 @@ export default function PaymentCollectionPage() {
   const [bankAccounts, setBankAccounts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [standaloneDialogOpen, setStandaloneDialogOpen] = useState(false)
+  const [allSales, setAllSales] = useState<any[]>([])
+  const [selectedSaleId, setSelectedSaleId] = useState("")
+  const [saleSchedules, setSaleSchedules] = useState<any[]>([])
   const [selectedSchedule, setSelectedSchedule] = useState<PaymentSchedule | null>(null)
   const [printData, setPrintData] = useState<any>(null)
   const [companySettings, setCompanySettings] = useState<any>({})
@@ -127,15 +134,76 @@ export default function PaymentCollectionPage() {
 
   const fetchMasterData = async () => {
     try {
-      const [banksRes, settingsRes] = await Promise.all([
+      const [banksRes, settingsRes, salesRes] = await Promise.all([
         axios.get("/api/finance/bank-cash"),
         axios.get("/api/settings"),
+        axios.get("/api/sales-v2"),
       ])
 
-      setBankAccounts(banksRes.data.accounts || [])
+      setBankAccounts(banksRes.data.bankCashAccounts || [])
       setCompanySettings(settingsRes.data.settings || {})
+      setAllSales(salesRes.data.sales || [])
     } catch (error) {
       console.error("Error fetching master data:", error)
+    }
+  }
+
+  const openStandalonePaymentDialog = () => {
+    setSelectedSaleId("")
+    setPaymentForm({
+      saleId: "",
+      scheduleId: "",
+      amount: "",
+      paymentDate: new Date().toISOString().split("T")[0],
+      paymentMethod: "cash",
+      bankCashId: "",
+      chequeNumber: "",
+      chequeDate: "",
+      chequeBank: "",
+      transactionReference: "",
+      remarks: "",
+      sendSMS: true,
+    })
+    setStandaloneDialogOpen(true)
+  }
+
+  const handleStandaloneSaleChange = async (saleId: string) => {
+    setSelectedSaleId(saleId)
+    setPaymentForm(prev => ({ ...prev, saleId, scheduleId: "", amount: "" }))
+    setSaleSchedules([])
+    if (saleId) {
+      try {
+        const res = await axios.get(`/api/sales-v2/schedules?saleId=${saleId}`)
+        const pending = (res.data.schedules || []).filter(
+          (s: any) => s.status !== 'paid' && (s.amount - (s.paid_amount || 0)) > 0
+        )
+        setSaleSchedules(pending)
+      } catch {}
+    }
+  }
+
+  const handleSubmitStandalonePayment = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (isSubmitting) return
+    if (!paymentForm.saleId) {
+      toast({ title: "Required", description: "Please select a booking", variant: "destructive" })
+      return
+    }
+    setIsSubmitting(true)
+    toast({ title: "Processing payment...", description: "Please wait." })
+    try {
+      const response = await axios.post("/api/sales-v2/payments", paymentForm)
+      toast({ title: "Payment Recorded!", description: `Receipt No: ${response.data.receiptNo}` })
+      if (response.data.payment) {
+        const paymentDetails = await axios.get(`/api/sales-v2/payments/${response.data.payment.id}`)
+        setPrintData(paymentDetails.data.payment)
+      }
+      setStandaloneDialogOpen(false)
+      await fetchSchedules()
+    } catch (error: any) {
+      toast({ title: "Error", description: error.response?.data?.error || "Failed to record payment", variant: "destructive" })
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -188,8 +256,8 @@ export default function PaymentCollectionPage() {
         setPrintData(paymentDetails.data.payment)
       }
 
-      fetchSchedules()
       setDialogOpen(false)
+      await fetchSchedules()
     } catch (error: any) {
       console.error("Error recording payment:", error)
       toast({
@@ -234,40 +302,21 @@ export default function PaymentCollectionPage() {
     }
   }, [printData])
 
-  const convertToWords = (amount: number): string => {
-    // Simple number to words conversion 
-    const ones = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
-    const tens = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
-    const teens = ['ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
-    
-    if (amount === 0) return 'zero taka only'
-    
-    const num = Math.floor(amount)
-    let words = ''
-    
-    if (num >= 1000) {
-      const thousands = Math.floor(num / 1000)
-      words += 'approximately ' + thousands + ' thousand '
-      const remainder = num % 1000
-      if (remainder > 0) {
-        words += remainder + ' '
-      }
-    } else {
-      words = num.toString() + ' '
-    }
-    
-    return words + 'taka only'
-  }
-
   // Summary calculations
   const totalDue = dueSchedules.reduce((sum, s) => sum + (s.amount - s.paid_amount), 0)
   const totalOverdue = overdueSchedules.reduce((sum, s) => sum + (s.amount - s.paid_amount), 0)
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Payment Collection</h1>
-        <p className="text-muted-foreground">Collect payments and manage payment schedules</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Payment Collection</h1>
+          <p className="text-muted-foreground">Collect payments and manage payment schedules</p>
+        </div>
+        <Button onClick={openStandalonePaymentDialog}>
+          <Plus className="mr-2 h-4 w-4" />
+          Record Payment
+        </Button>
       </div>
 
       {/* Summary Cards */}
@@ -373,7 +422,7 @@ export default function PaymentCollectionPage() {
                           {schedule.schedule_type.replace('_', ' ')}
                           {schedule.installment_no > 0 && ` #${schedule.installment_no}`}
                         </TableCell>
-                        <TableCell>{new Date(schedule.due_date).toLocaleDateString()}</TableCell>
+                        <TableCell>{formatDateDMY(schedule.due_date)}</TableCell>
                         <TableCell>{formatAmount(schedule.amount)}</TableCell>
                         <TableCell className="text-green-600">{formatAmount(schedule.paid_amount)}</TableCell>
                         <TableCell className="font-medium">
@@ -433,7 +482,7 @@ export default function PaymentCollectionPage() {
                             <div className="text-xs text-muted-foreground">{schedule.project_name}</div>
                           </div>
                         </TableCell>
-                        <TableCell>{new Date(schedule.due_date).toLocaleDateString()}</TableCell>
+                        <TableCell>{formatDateDMY(schedule.due_date)}</TableCell>
                         <TableCell>
                           <Badge variant="destructive">{schedule.days_overdue} days</Badge>
                         </TableCell>
@@ -487,7 +536,7 @@ export default function PaymentCollectionPage() {
                           <div className="text-xs text-muted-foreground">{payment.project_name}</div>
                         </div>
                       </TableCell>
-                      <TableCell>{new Date(payment.payment_date).toLocaleDateString()}</TableCell>
+                      <TableCell>{formatDateDMY(payment.payment_date)}</TableCell>
                       <TableCell className="text-green-600 font-medium">
                         {formatAmount(payment.amount)}
                       </TableCell>
@@ -527,6 +576,155 @@ export default function PaymentCollectionPage() {
         </TabsContent>
       </Tabs>
 
+      {/* Standalone Record Payment Dialog */}
+      <Dialog open={standaloneDialogOpen} onOpenChange={setStandaloneDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Record Payment</DialogTitle>
+            <DialogDescription>Record a payment for any booking</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmitStandalonePayment} className="space-y-4">
+            {/* Booking Selection */}
+            <div className="space-y-2">
+              <Label>Booking *</Label>
+              <Select value={selectedSaleId} onValueChange={handleStandaloneSaleChange} disabled={isSubmitting}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select booking" />
+                </SelectTrigger>
+                <SelectContent>
+                  {allSales.map((sale: any) => (
+                    <SelectItem key={sale.id} value={String(sale.id)}>
+                      {sale.sale_no} — {sale.customer_name} ({sale.product_name})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Schedule Selection */}
+            {saleSchedules.length > 0 && (
+              <div className="space-y-2">
+                <Label>Payment Schedule (optional — links payment to a schedule)</Label>
+                <Select
+                  value={paymentForm.scheduleId || "none"}
+                  onValueChange={(v) => {
+                    const scheduleId = v === "none" ? "" : v
+                    const sch = saleSchedules.find((s: any) => String(s.id) === scheduleId)
+                    setPaymentForm(prev => ({
+                      ...prev,
+                      scheduleId,
+                      amount: sch ? String(sch.amount - (sch.paid_amount || 0)) : prev.amount,
+                    }))
+                  }}
+                  disabled={isSubmitting}
+                >
+                  <SelectTrigger><SelectValue placeholder="Select schedule (optional)" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">-- No specific schedule --</SelectItem>
+                    {saleSchedules.map((s: any) => (
+                      <SelectItem key={s.id} value={String(s.id)}>
+                        {s.payment_label || s.schedule_type} — Due {formatDateDMY(s.due_date)} — Balance: {s.amount - (s.paid_amount || 0)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Amount */}
+            <div className="space-y-2">
+              <Label>Amount *</Label>
+              <Input
+                type="number" step="0.01"
+                value={paymentForm.amount}
+                onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
+                required disabled={isSubmitting}
+              />
+            </div>
+
+            {/* Payment Date */}
+            <div className="space-y-2">
+              <Label>Payment Date *</Label>
+              <DateField
+                value={paymentForm.paymentDate}
+                onChange={(v) => setPaymentForm({ ...paymentForm, paymentDate: v })}
+                required disabled={isSubmitting}
+              />
+              {paymentForm.paymentDate && (
+                <p className="text-xs text-muted-foreground">{formatDateDMY(paymentForm.paymentDate)}</p>
+              )}
+            </div>
+
+            {/* Payment Method */}
+            <div className="space-y-2">
+              <Label>Payment Method *</Label>
+              <Select value={paymentForm.paymentMethod} onValueChange={(v) => setPaymentForm({ ...paymentForm, paymentMethod: v })} disabled={isSubmitting}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">Cash</SelectItem>
+                  <SelectItem value="cheque">Cheque</SelectItem>
+                  <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                  <SelectItem value="online">Online Payment</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Deposit To */}
+            <div className="space-y-2">
+              <Label>Deposit To</Label>
+              <Select value={paymentForm.bankCashId} onValueChange={(v) => setPaymentForm({ ...paymentForm, bankCashId: v })} disabled={isSubmitting}>
+                <SelectTrigger><SelectValue placeholder="Select account" /></SelectTrigger>
+                <SelectContent>
+                  {bankAccounts.map((acc: any) => (
+                    <SelectItem key={acc.id} value={String(acc.id)}>{acc.account_title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Cheque Details */}
+            {paymentForm.paymentMethod === 'cheque' && (
+              <div className="grid grid-cols-2 gap-4 p-4 bg-muted rounded-lg">
+                <div className="space-y-2">
+                  <Label>Cheque Number *</Label>
+                  <Input value={paymentForm.chequeNumber} onChange={(e) => setPaymentForm({ ...paymentForm, chequeNumber: e.target.value })} required disabled={isSubmitting} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Cheque Date *</Label>
+                  <DateField value={paymentForm.chequeDate} onChange={(v) => setPaymentForm({ ...paymentForm, chequeDate: v })} required disabled={isSubmitting} />
+                </div>
+                <div className="col-span-2 space-y-2">
+                  <Label>Bank Name</Label>
+                  <Input value={paymentForm.chequeBank} onChange={(e) => setPaymentForm({ ...paymentForm, chequeBank: e.target.value })} placeholder="Bank name" disabled={isSubmitting} />
+                </div>
+              </div>
+            )}
+
+            {/* Bank Transfer Reference */}
+            {(paymentForm.paymentMethod === 'bank_transfer' || paymentForm.paymentMethod === 'online') && (
+              <div className="space-y-2">
+                <Label>Transaction Reference</Label>
+                <Input value={paymentForm.transactionReference} onChange={(e) => setPaymentForm({ ...paymentForm, transactionReference: e.target.value })} placeholder="Transaction ID / reference" disabled={isSubmitting} />
+              </div>
+            )}
+
+            {/* Remarks */}
+            <div className="space-y-2">
+              <Label>Remarks</Label>
+              <Textarea value={paymentForm.remarks} onChange={(e) => setPaymentForm({ ...paymentForm, remarks: e.target.value })} rows={2} disabled={isSubmitting} />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4 border-t">
+              <Button type="button" variant="outline" onClick={() => setStandaloneDialogOpen(false)} disabled={isSubmitting}>Cancel</Button>
+              <Button type="submit" disabled={isSubmitting}>
+                <DollarSign className="mr-2 h-4 w-4" />
+                {isSubmitting ? "Processing..." : "Record Payment"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       {/* Payment Collection Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg">
@@ -564,13 +762,15 @@ export default function PaymentCollectionPage() {
             {/* Payment Date */}
             <div className="space-y-2">
               <Label>Payment Date *</Label>
-              <Input
-                type="date"
+              <DateField
                 value={paymentForm.paymentDate}
-                onChange={(e) => setPaymentForm({ ...paymentForm, paymentDate: e.target.value })}
+                onChange={(v) => setPaymentForm({ ...paymentForm, paymentDate: v })}
                 required
                 disabled={isSubmitting}
               />
+              {paymentForm.paymentDate && (
+                <p className="text-xs text-muted-foreground">{formatDateDMY(paymentForm.paymentDate)}</p>
+              )}
             </div>
 
             {/* Payment Method */}
@@ -643,10 +843,9 @@ export default function PaymentCollectionPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Cheque Date *</Label>
-                  <Input
-                    type="date"
+                  <DateField
                     value={paymentForm.chequeDate}
-                    onChange={(e) => setPaymentForm({ ...paymentForm, chequeDate: e.target.value })}
+                    onChange={(v) => setPaymentForm({ ...paymentForm, chequeDate: v })}
                     required
                     disabled={isSubmitting}
                   />
@@ -721,20 +920,32 @@ export default function PaymentCollectionPage() {
         {printData && (
           <CustomerReceipt
             receiptNumber={printData.receipt_no}
-            date={new Date(printData.payment_date).toLocaleDateString()}
+            date={formatDateDMY(printData.payment_date)}
             customerName={printData.customer_name}
             customerAddress={printData.customer_address || ''}
             customerPhone={printData.customer_phone || ''}
             amount={printData.amount}
-            amountInWords={convertToWords(printData.amount)}
-            description={`Payment for ${printData.product_name} - Unit ${printData.unit_no}`}
-            paymentMethod={printData.payment_method}
+            amountInWords={amountToWordsBDT(Number(printData.amount) || 0)}
+            description={
+              printData.product_name
+                ? `Payment for ${printData.product_name}${printData.unit_no ? ` - Unit ${printData.unit_no}` : ''}`
+                : `Payment against booking ${printData.sale_no || ''}`.trim()
+            }
+            paymentMethod={normalizePaymentMethod(String(printData.payment_method || '').replace(/_/g, ' '))}
             paymentType="Installment"
             projectName={printData.project_name}
-            unitFlatInfo={`Unit ${printData.unit_no}${printData.floor_no ? `, Floor ${printData.floor_no}` : ''}`}
+            unitFlatInfo={
+              [
+                printData.unit_no ? `Unit ${printData.unit_no}` : '',
+                printData.floor_no ? `Floor ${printData.floor_no}` : '',
+              ]
+                .filter(Boolean)
+                .join(', ') || undefined
+            }
             projectAddress={printData.project_address || ''}
             chequeNumber={printData.cheque_number}
             bankName={printData.cheque_bank}
+            chequeDate={printData.cheque_date ? formatDateDMY(printData.cheque_date) : undefined}
             receivedBy="Sales Department"
             companyName={companySettings?.company_name || 'Company Name'}
             companyAddress={companySettings?.address || 'Company Address'}

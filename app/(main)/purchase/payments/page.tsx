@@ -2,8 +2,10 @@
 
 import type React from "react"
 import { useEffect, useState } from "react"
+import { formatDateDMY } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { DateField } from "@/components/ui/date-field"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
@@ -17,12 +19,18 @@ import {
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { Plus, Search, Eye, DollarSign, Receipt, FileText } from "lucide-react"
+import { Plus, Search, Eye, DollarSign, Receipt, FileText, Printer, Loader2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Info } from "lucide-react"
 import axios from "axios"
 import { Switch } from "@/components/ui/switch"
+import { Combobox } from "@/components/ui/combobox"
+import { SortableHeader } from "@/components/ui/sortable-header"
+import { useSortable } from "@/lib/hooks/use-sortable"
+import { VoucherReceiptPDF } from "@/components/pdf/voucher-receipt-pdf"
+import { VoucherViewModal } from "@/components/accounting/voucher-view-modal"
+import { getCompanySettings, printDocument } from "@/lib/pdf-utils"
 
 export default function PaymentTransactionsPage() {
   const [isClient, setIsClient] = useState(false)
@@ -41,12 +49,16 @@ export default function PaymentTransactionsPage() {
   const [viewDialogOpen, setViewDialogOpen] = useState(false)
   const [selectedPayment, setSelectedPayment] = useState<any>(null)
   const [selectedPO, setSelectedPO] = useState<any>(null)
+  const [poLoading, setPoLoading] = useState(false)
+  const [companySettings, setCompanySettings] = useState<any>(null)
+  const [printPayment, setPrintPayment] = useState<any>(null)
 
   const getTodayDate = () => new Date().toISOString().split("T")[0]
 
   const [formData, setFormData] = useState({
     purchaseOrderId: "",
     vendorId: "",
+    constructorId: "",
     projectId: "",
     paymentDate: "",
     paymentType: "Partial",
@@ -121,26 +133,54 @@ export default function PaymentTransactionsPage() {
       ...prev,
       paymentDate: getTodayDate(),
     }))
+    getCompanySettings().then(setCompanySettings)
   }, [])
 
   const handlePOChange = async (poId: string) => {
-    setFormData({ ...formData, purchaseOrderId: poId })
+    if (!poId || poLoading) return // ignore empty selection / in-flight request
+    setFormData((prev) => ({ ...prev, purchaseOrderId: poId }))
+    setSelectedPO(null)
+    setPoLoading(true)
 
     try {
-      const response = await axios.get(`/api/purchase/orders/${poId}`)
+      // Fast path endpoint: PO header + party + totals only (no items/schedules/etc.)
+      const response = await axios.get(`/api/purchase/orders/${poId}?mode=payment-form`)
       const order = response.data?.order || response.data
       setSelectedPO(order)
-      
-      // Pre-fill vendor and project
+
+      // Pre-fill party (vendor or contractor) and project
       setFormData((prev) => ({
         ...prev,
         purchaseOrderId: poId,
         vendorId: order?.vendor_id?.toString() || "",
+        constructorId: order?.constructor_id?.toString() || "",
         projectId: order?.project_id?.toString() || "",
       }))
     } catch (error) {
       console.error("Error fetching PO details:", error)
+      alert("Failed to load purchase order. Please try again.")
+    } finally {
+      setPoLoading(false)
     }
+  }
+
+  // Options for the searchable PO picker — matched by PO number, vendor/party
+  // name, and supplier/vendor code.
+  const poOptions = purchaseOrders.map((po) => {
+    const party = po.party_name || po.vendor_name || po.constructor_name || ""
+    const due = parseFloat(po.total_amount) <= 0 ? "Open" : `Due: ৳${parseFloat(po.total_due || 0).toFixed(2)}`
+    return {
+      value: po.id.toString(),
+      label: `${po.po_number} — ${party} — ${due}`,
+      keywords: `${po.po_number} ${party} ${po.supplier_code || po.vendor_code || ""}`,
+    }
+  })
+
+  // An "open" PO has no committed total (e.g. a contractor engagement billed by
+  // a fixed rate with an open quantity). There is no remaining-due or payment cap.
+  const isOpenPO = (): boolean => {
+    if (!selectedPO) return false
+    return parseFloat(selectedPO.total_amount) <= 0
   }
 
   const calculateRemainingAmount = (): number => {
@@ -158,6 +198,7 @@ export default function PaymentTransactionsPage() {
         poId: formData.purchaseOrderId ? parseInt(formData.purchaseOrderId) : null,
         poNumber: selectedPO?.po_number || null,
         vendorId: formData.vendorId ? parseInt(formData.vendorId) : null,
+        constructorId: formData.constructorId ? parseInt(formData.constructorId) : null,
         projectId: formData.projectId ? parseInt(formData.projectId) : null,
         paymentDate: formData.paymentDate,
         paymentType: formData.paymentType,
@@ -180,7 +221,10 @@ export default function PaymentTransactionsPage() {
       alert("Payment recorded successfully" + (formData.createVoucher ? " and voucher created" : ""))
     } catch (error) {
       console.error("Error recording payment:", error)
-      alert("Failed to record payment")
+      const message = axios.isAxiosError(error)
+        ? error.response?.data?.error || error.message
+        : "Failed to record payment"
+      alert(`Failed to record payment: ${message}`)
     }
   }
 
@@ -188,6 +232,7 @@ export default function PaymentTransactionsPage() {
     setFormData({
       purchaseOrderId: "",
       vendorId: "",
+      constructorId: "",
       projectId: "",
       paymentDate: getTodayDate(),
       paymentType: "Partial",
@@ -207,10 +252,85 @@ export default function PaymentTransactionsPage() {
     setSelectedPO(null)
   }
 
+  // Map a payment row to the shared View-modal shape
+  const paymentToView = (p: any) => ({
+    title: `Payment Voucher — ${p.payment_number ?? ""}`.trim(),
+    voucherNo: p.voucher_number || p.payment_number,
+    date: p.payment_date,
+    voucherType: p.payment_type,
+    status: p.status || p.payment_status,
+    project: p.project_name,
+    partyLabel: p.constructor_name && !p.vendor_name ? "Contractor" : "Vendor",
+    partyName: p.vendor_name || p.constructor_name,
+    partyAddress: p.vendor_address,
+    partyPhone: p.vendor_phone,
+    partyEmail: p.vendor_email,
+    paymentMethod: p.payment_method,
+    bankName: p.bank_account_name || p.bank_name,
+    chequeNo: p.cheque_number,
+    chequeDate: p.cheque_date,
+    referenceNumber: p.reference_number || p.transaction_reference,
+    headOfAccount: p.head_of_account,
+    description: p.remarks,
+    amount: Number(p.amount) || 0,
+    preparedBy: p.receipt_issued_by,
+    verifiedBy: p.verified_by_name,
+  })
+
   const handleViewPayment = async (payment: any) => {
     setSelectedPayment(payment)
     setViewDialogOpen(true)
   }
+
+  // Map a payment row to the shared client-facing receipt shape (no ledger tables)
+  const paymentToReceipt = (p: any) => ({
+    documentTitle: "Payment Voucher",
+    voucherNo: p.voucher_number || p.payment_number,
+    voucherDate: p.payment_date,
+    voucherType: p.payment_type,
+    status: p.status || p.payment_status,
+    partyLabel: p.constructor_name && !p.vendor_name ? "Contractor" : "Vendor",
+    partyName: p.vendor_name || p.constructor_name,
+    partyAddress: p.vendor_address,
+    partyPhone: p.vendor_phone,
+    partyEmail: p.vendor_email,
+    paymentMethod: p.payment_method,
+    bankName: p.bank_account_name || p.bank_name,
+    chequeNo: p.cheque_number,
+    chequeDate: p.cheque_date,
+    referenceNumber: p.reference_number || p.transaction_reference,
+    poNumber: p.po_number,
+    headOfAccount: p.head_of_account,
+    purpose: p.remarks,
+    totalAmount: Number(p.amount) || 0,
+    rows: [
+      {
+        description: p.payment_type ? `${p.payment_type} Payment` : "Payment",
+        bank: p.bank_account_name || p.bank_name,
+        chequeNo: p.cheque_number,
+        chequeDate: p.cheque_date,
+        reference: p.reference_number || p.transaction_reference,
+        amount: Number(p.amount) || 0,
+      },
+    ],
+    preparedBy: p.receipt_issued_by,
+    receivedBy: p.vendor_name || p.constructor_name,
+  })
+
+  const handlePrintPayment = (payment: any) => {
+    setPrintPayment(paymentToReceipt(payment))
+    setTimeout(() => printDocument("print-payment-content", payment.payment_number), 150)
+  }
+
+  // Sortable payments table (Date + PO Number)
+  const { sorted: sortedPayments, sort, requestSort } = useSortable(
+    payments,
+    {
+      payment_date: (p: any) => p.payment_date,
+      po_number: (p: any) => p.po_number,
+    },
+    { key: "payment_date", direction: "desc" },
+  )
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -256,25 +376,25 @@ export default function PaymentTransactionsPage() {
               {/* Purchase Order Selection */}
               <div>
                 <Label>Purchase Order *</Label>
-                <Select
+                <Combobox
+                  options={poOptions}
                   value={formData.purchaseOrderId}
-                  onValueChange={handlePOChange}
-                  required
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select purchase order" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {purchaseOrders.map((po) => (
-                      <SelectItem key={po.id} value={po.id.toString()}>
-                        {po.po_number} - {po.vendor_name} - Due: ৳{parseFloat(po.total_due || 0).toFixed(2)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  onChange={handlePOChange}
+                  disabled={poLoading}
+                  placeholder="Select purchase order"
+                  searchPlaceholder="Search by PO number, vendor, or code…"
+                  emptyText="No matching purchase order."
+                />
               </div>
 
-              {selectedPO && (
+              {poLoading && (
+                <div className="flex items-center justify-center gap-3 rounded-lg border bg-muted/40 py-8 text-muted-foreground">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span className="text-sm font-medium">Loading Purchase Order…</span>
+                </div>
+              )}
+
+              {selectedPO && !poLoading && (
                 <>
                   {/* PO Summary */}
                   <Card>
@@ -285,8 +405,12 @@ export default function PaymentTransactionsPage() {
                           <p className="font-semibold">{selectedPO.po_number}</p>
                         </div>
                         <div>
-                          <Label className="text-muted-foreground">Vendor</Label>
-                          <p className="font-medium">{selectedPO.vendor_name}</p>
+                          <Label className="text-muted-foreground">
+                            {selectedPO.party_type === "Contractor" ? "Contractor" : "Vendor"}
+                          </Label>
+                          <p className="font-medium">
+                            {selectedPO.party_name || selectedPO.vendor_name || selectedPO.constructor_name}
+                          </p>
                         </div>
                         <div>
                           <Label className="text-muted-foreground">Project</Label>
@@ -294,13 +418,15 @@ export default function PaymentTransactionsPage() {
                         </div>
                         <div>
                           <Label className="text-muted-foreground">Order Date</Label>
-                          <p>{new Date(selectedPO.order_date).toLocaleDateString()}</p>
+                          <p>{formatDateDMY(selectedPO.order_date)}</p>
                         </div>
                       </div>
                       <div className="grid grid-cols-3 gap-4 mt-4 p-4 bg-muted rounded-lg">
                         <div>
                           <Label className="text-muted-foreground">Total Amount</Label>
-                          <p className="text-xl font-bold">৳ {parseFloat(selectedPO.total_amount).toFixed(2)}</p>
+                          <p className="text-xl font-bold">
+                            {isOpenPO() ? "Open" : `৳ ${parseFloat(selectedPO.total_amount).toFixed(2)}`}
+                          </p>
                         </div>
                         <div>
                           <Label className="text-muted-foreground">Total Paid</Label>
@@ -310,9 +436,15 @@ export default function PaymentTransactionsPage() {
                         </div>
                         <div>
                           <Label className="text-muted-foreground">Remaining Due</Label>
-                          <p className="text-xl font-bold text-red-600">
-                            ৳ {calculateRemainingAmount().toFixed(2)}
-                          </p>
+                          {isOpenPO() ? (
+                            <p className="text-sm font-medium text-muted-foreground">
+                              No fixed total — pay as you go
+                            </p>
+                          ) : (
+                            <p className="text-xl font-bold text-red-600">
+                              ৳ {calculateRemainingAmount().toFixed(2)}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </CardContent>
@@ -322,10 +454,9 @@ export default function PaymentTransactionsPage() {
                   <div className="grid grid-cols-3 gap-4">
                     <div>
                       <Label>Payment Date *</Label>
-                      <Input
-                        type="date"
+                      <DateField
                         value={formData.paymentDate}
-                        onChange={(e) => setFormData({ ...formData, paymentDate: e.target.value })}
+                        onChange={(v) => setFormData({ ...formData, paymentDate: v })}
                         required
                       />
                     </div>
@@ -437,10 +568,9 @@ export default function PaymentTransactionsPage() {
                       </div>
                       <div>
                         <Label>Cheque Date *</Label>
-                        <Input
-                          type="date"
+                        <DateField
                           value={formData.chequeDate}
-                          onChange={(e) => setFormData({ ...formData, chequeDate: e.target.value })}
+                          onChange={(v) => setFormData({ ...formData, chequeDate: v })}
                           required
                         />
                       </div>
@@ -637,8 +767,12 @@ export default function PaymentTransactionsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Payment Number</TableHead>
-                  <TableHead>Payment Date</TableHead>
-                  <TableHead>PO Number</TableHead>
+                  <TableHead>
+                    <SortableHeader label="Payment Date" sortKey="payment_date" sort={sort} onSort={requestSort} />
+                  </TableHead>
+                  <TableHead>
+                    <SortableHeader label="PO Number" sortKey="po_number" sort={sort} onSort={requestSort} />
+                  </TableHead>
                   <TableHead>Vendor</TableHead>
                   <TableHead>Payment Type</TableHead>
                   <TableHead>Amount</TableHead>
@@ -649,12 +783,12 @@ export default function PaymentTransactionsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {payments.map((payment) => (
+                {sortedPayments.map((payment) => (
                   <TableRow key={payment.id}>
                     <TableCell className="font-medium">{payment.payment_number}</TableCell>
-                    <TableCell>{new Date(payment.payment_date).toLocaleDateString()}</TableCell>
+                    <TableCell>{formatDateDMY(payment.payment_date)}</TableCell>
                     <TableCell>{payment.po_number}</TableCell>
-                    <TableCell>{payment.vendor_name}</TableCell>
+                    <TableCell>{payment.vendor_name || payment.constructor_name}</TableCell>
                     <TableCell>
                       <Badge variant={getPaymentTypeColor(payment.payment_type) as any}>
                         {payment.payment_type}
@@ -678,13 +812,24 @@ export default function PaymentTransactionsPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleViewPayment(payment)}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleViewPayment(payment)}
+                          title="View"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handlePrintPayment(payment)}
+                          title="Print"
+                        >
+                          <Printer className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -694,117 +839,29 @@ export default function PaymentTransactionsPage() {
         </CardContent>
       </Card>
 
-      {/* View Dialog */}
-      <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>Payment Transaction Details</DialogTitle>
-          </DialogHeader>
-          {selectedPayment && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-muted-foreground">Payment Number</Label>
-                  <p className="font-semibold">{selectedPayment.payment_number}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Payment Date</Label>
-                  <p>{new Date(selectedPayment.payment_date).toLocaleDateString()}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">PO Number</Label>
-                  <p>{selectedPayment.po_number}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Vendor</Label>
-                  <p>{selectedPayment.vendor_name}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Project</Label>
-                  <p>{selectedPayment.project_name}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Payment Type</Label>
-                  <Badge variant={getPaymentTypeColor(selectedPayment.payment_type) as any}>
-                    {selectedPayment.payment_type}
-                  </Badge>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Amount</Label>
-                  <p className="text-2xl font-bold">৳ {parseFloat(selectedPayment.amount).toFixed(2)}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Payment Method</Label>
-                  <p>{selectedPayment.payment_method}</p>
-                </div>
-                {selectedPayment.bank_account_name && (
-                  <div>
-                    <Label className="text-muted-foreground">Bank/Cash Account</Label>
-                    <p>{selectedPayment.bank_account_name}</p>
-                  </div>
-                )}
-                {selectedPayment.reference_number && (
-                  <div>
-                    <Label className="text-muted-foreground">Reference Number</Label>
-                    <p>{selectedPayment.reference_number}</p>
-                  </div>
-                )}
-                {selectedPayment.cheque_number && (
-                  <div>
-                    <Label className="text-muted-foreground">Cheque Number</Label>
-                    <p>{selectedPayment.cheque_number}</p>
-                  </div>
-                )}
-                {selectedPayment.transaction_id && (
-                  <div>
-                    <Label className="text-muted-foreground">Transaction ID</Label>
-                    <p>{selectedPayment.transaction_id}</p>
-                  </div>
-                )}
-                <div>
-                  <Label className="text-muted-foreground">Paid By</Label>
-                  <p>{selectedPayment.paid_by_name}</p>
-                </div>
-                {selectedPayment.verified_by_name && (
-                  <div>
-                    <Label className="text-muted-foreground">Verified By</Label>
-                    <p>{selectedPayment.verified_by_name}</p>
-                  </div>
-                )}
-                <div>
-                  <Label className="text-muted-foreground">Status</Label>
-                  <Badge variant={getStatusColor(selectedPayment.status) as any}>
-                    {selectedPayment.status}
-                  </Badge>
-                </div>
-                {selectedPayment.voucher_number && (
-                  <div>
-                    <Label className="text-muted-foreground">Voucher Number</Label>
-                    <Badge variant="outline" className="text-base">
-                      <FileText className="h-4 w-4 mr-1" />
-                      {selectedPayment.voucher_number}
-                    </Badge>
-                  </div>
-                )}
-              </div>
+      {/* View Dialog (shared, fully-detailed) */}
+      <VoucherViewModal
+        open={viewDialogOpen}
+        onOpenChange={setViewDialogOpen}
+        data={selectedPayment ? paymentToView(selectedPayment) : null}
+      />
 
-              {selectedPayment.payment_remarks && (
-                <div>
-                  <Label className="text-muted-foreground">Payment Remarks</Label>
-                  <p className="text-sm mt-1">{selectedPayment.payment_remarks}</p>
-                </div>
-              )}
-
-              {selectedPayment.voucher_remarks && (
-                <div>
-                  <Label className="text-muted-foreground">Voucher Remarks</Label>
-                  <p className="text-sm mt-1">{selectedPayment.voucher_remarks}</p>
-                </div>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Hidden Print Content — client-facing payment receipt (no ledger tables) */}
+      <div className="hidden">
+        {printPayment && companySettings && (
+          <div id="print-payment-content">
+            <VoucherReceiptPDF
+              data={printPayment}
+              companyName={companySettings.company_name}
+              companyAddress={companySettings.address}
+              currencySymbol={companySettings.currency_symbol}
+              companyLogo={companySettings.company_logo}
+              footerImage={companySettings.footer_image}
+              backgroundImage={companySettings.background_image}
+            />
+          </div>
+        )}
+      </div>
     </div>
   )
 }

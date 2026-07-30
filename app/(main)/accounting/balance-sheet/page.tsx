@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useState, useEffect } from "react"
 import { useQuery } from "@tanstack/react-query"
@@ -8,6 +8,7 @@ import { BalanceSheetPDF } from "@/components/pdf/balance-sheet-pdf"
 import { printDocument, getCompanySettings } from "@/lib/pdf-utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { DateField } from "@/components/ui/date-field"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Printer, Download, Building2, Wallet, AlertCircle, CheckCircle2, Loader2 } from "lucide-react"
@@ -81,7 +82,7 @@ export default function BalanceSheetPage() {
           <div className="flex gap-4 items-end">
             <div className="space-y-2 flex-1 max-w-xs">
               <Label>As on Date</Label>
-              <Input type="date" value={asOnDate} onChange={(e) => setAsOnDate(e.target.value)} max={new Date().toISOString().split("T")[0]} />
+              <DateField value={asOnDate} onChange={(v) => setAsOnDate(v)} />
             </div>
             <Button onClick={handleGenerateReport} disabled={isLoading}>
               {isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}

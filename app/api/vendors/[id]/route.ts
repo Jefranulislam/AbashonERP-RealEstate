@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { sql } from "@/lib/db"
 import { getCurrentUser } from "@/lib/auth"
+import { ensureVoucherPaymentSchema } from "@/lib/voucher-schema"
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -9,13 +10,16 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    await ensureVoucherPaymentSchema()
+
     const { id } = await params
     const data = await request.json()
 
     const result = await sql`
       UPDATE vendors
-      SET 
+      SET
         vendor_name = ${data.vendorName},
+        contact_person = ${data.contactPerson || null},
         mailing_address = ${data.mailingAddress},
         website = ${data.website},
         phone = ${data.phone},
@@ -36,7 +40,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     return NextResponse.json({ success: true, vendor: result[0] })
   } catch (error) {
-    console.error("[v0] Error updating vendor:", error)
+    console.error("Error updating vendor:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

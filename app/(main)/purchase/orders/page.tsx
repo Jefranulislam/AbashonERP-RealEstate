@@ -2,8 +2,10 @@
 
 import type React from "react"
 import { useEffect, useState } from "react"
+import { formatDateDMY } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { DateField } from "@/components/ui/date-field"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
@@ -17,7 +19,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { Plus, Search, Trash2, Eye, Edit, FileText, Printer } from "lucide-react"
+import { Plus, Search, Trash2, Eye, Edit, FileText, Printer, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Info } from "lucide-react"
@@ -45,6 +47,7 @@ export default function PurchaseOrdersPage() {
   const { toast } = useToast()
   const [orders, setOrders] = useState<any[]>([])
   const [vendors, setVendors] = useState<any[]>([])
+  const [constructors, setConstructors] = useState<any[]>([])
   const [projects, setProjects] = useState<any[]>([])
   const [employees, setEmployees] = useState<any[]>([])
   const [expenseHeads, setExpenseHeads] = useState<any[]>([])
@@ -55,15 +58,53 @@ export default function PurchaseOrdersPage() {
   const [filterStatus, setFilterStatus] = useState("all")
   const [filterProject, setFilterProject] = useState("all")
   const [filterVendor, setFilterVendor] = useState("all")
+  const [sortBy, setSortBy] = useState<"order_date" | "vendor_name">("order_date")
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc")
+
+  // Click a sortable header: same column toggles asc/desc, new column starts descending.
+  const toggleSort = (column: "order_date" | "vendor_name") => {
+    if (sortBy === column) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"))
+    } else {
+      setSortBy(column)
+      setSortDir("desc")
+    }
+  }
+
+  const sortedOrders = [...orders].sort((a, b) => {
+    let cmp = 0
+    if (sortBy === "order_date") {
+      cmp = new Date(a.order_date || 0).getTime() - new Date(b.order_date || 0).getTime()
+    } else {
+      cmp = String(a.party_name || a.vendor_name || a.constructor_name || "").localeCompare(
+        String(b.party_name || b.vendor_name || b.constructor_name || ""),
+        undefined,
+        { sensitivity: "base" },
+      )
+    }
+    return sortDir === "asc" ? cmp : -cmp
+  })
+
+  const SortIcon = ({ column }: { column: "order_date" | "vendor_name" }) => {
+    if (sortBy !== column) return <ArrowUpDown className="ml-1 inline h-3.5 w-3.5 opacity-40" />
+    return sortDir === "asc" ? (
+      <ArrowUp className="ml-1 inline h-3.5 w-3.5" />
+    ) : (
+      <ArrowDown className="ml-1 inline h-3.5 w-3.5" />
+    )
+  }
   const [dialogOpen, setDialogOpen] = useState(false)
   const [viewDialogOpen, setViewDialogOpen] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<any>(null)
   const [isEditMode, setIsEditMode] = useState(false)
+  const [editingId, setEditingId] = useState<number | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [deleting, setDeleting] = useState(false)
   
   const [formData, setFormData] = useState({
+    partyType: "Vendor",
     vendorId: "",
+    constructorId: "",
     projectId: "",
     requisitionId: "",
     orderDate: new Date().toISOString().split("T")[0],
@@ -132,8 +173,9 @@ export default function PurchaseOrdersPage() {
 
   const fetchData = async () => {
     try {
-      const [vendorsRes, projectsRes, employeesRes, expenseHeadsRes, requisitionsRes] = await Promise.all([
+      const [vendorsRes, constructorsRes, projectsRes, employeesRes, expenseHeadsRes, requisitionsRes] = await Promise.all([
         axios.get("/api/vendors"),
+        axios.get("/api/constructors"),
         axios.get("/api/projects"),
         axios.get("/api/employees"),
         axios.get("/api/finance/expense-heads"),
@@ -146,6 +188,7 @@ export default function PurchaseOrdersPage() {
       console.log("Fetched requisitions:", requisitionsRes.data)
 
       const vendorsList = Array.isArray(vendorsRes.data) ? vendorsRes.data : vendorsRes.data.vendors || []
+      const constructorsList = Array.isArray(constructorsRes.data) ? constructorsRes.data : constructorsRes.data.constructors || []
       const projectsList = Array.isArray(projectsRes.data) ? projectsRes.data : projectsRes.data.projects || []
       const employeesList = Array.isArray(employeesRes.data) ? employeesRes.data : employeesRes.data.employees || []
       const expenseHeadsList = Array.isArray(expenseHeadsRes.data) ? expenseHeadsRes.data : expenseHeadsRes.data.expenseHeads || []
@@ -157,6 +200,7 @@ export default function PurchaseOrdersPage() {
       console.log("Processed requisitions:", requisitionsList.length, requisitionsList[0])
 
       setVendors(vendorsList)
+      setConstructors(constructorsList)
       setProjects(projectsList)
       setEmployees(employeesList)
       setExpenseHeads(expenseHeadsList)
@@ -250,37 +294,65 @@ export default function PurchaseOrdersPage() {
     
     try {
       setSubmitting(true)
-      
-      toast({
-        title: "Creating PO...",
-        description: "Processing your purchase order",
-      })
-      
-      const orderData = {
-        ...formData,
-        items: items.map(item => ({
-          ...item,
-          qty: parseFloat(item.qty),
-          rate: parseFloat(item.rate),
-          amount: parseFloat(item.totalPrice),
-        })),
-        paymentSchedules: paymentSchedules.map(schedule => ({
-          ...schedule,
-          scheduledAmount: parseFloat(schedule.scheduledAmount),
-        })),
-        subtotal: calculateSubtotal(),
-        discount: parseFloat(discount),
-        tax: parseFloat(tax),
-        totalAmount: calculateTotal(),
+
+      const mappedItems = items.map(item => ({
+        ...item,
+        qty: parseFloat(item.qty),
+        rate: parseFloat(item.rate),
+        amount: parseFloat(item.totalPrice),
+      }))
+
+      if (isEditMode && editingId != null) {
+        toast({
+          title: "Updating PO...",
+          description: "Saving your changes",
+        })
+
+        const updateData = {
+          ...formData,
+          items: mappedItems,
+          subtotal: calculateSubtotal(),
+          discountAmount: parseFloat(discount),
+          taxAmount: parseFloat(tax),
+          totalAmount: calculateTotal(),
+          status: selectedOrder?.status || "Draft",
+        }
+
+        const response = await axios.put(`/api/purchase/orders/${editingId}`, updateData)
+
+        toast({
+          title: "Success",
+          description: `PO ${response.data.order?.po_number || ""} updated successfully`,
+        })
+      } else {
+        toast({
+          title: "Creating PO...",
+          description: "Processing your purchase order",
+        })
+
+        const orderData = {
+          ...formData,
+          items: mappedItems,
+          paymentSchedules: paymentSchedules
+            .filter(schedule => schedule.scheduledAmount && !isNaN(parseFloat(schedule.scheduledAmount)))
+            .map(schedule => ({
+              ...schedule,
+              scheduledAmount: parseFloat(schedule.scheduledAmount),
+            })),
+          subtotal: calculateSubtotal(),
+          discount: parseFloat(discount),
+          tax: parseFloat(tax),
+          totalAmount: calculateTotal(),
+        }
+
+        const response = await axios.post("/api/purchase/orders", orderData)
+
+        toast({
+          title: "Success",
+          description: `PO ${response.data.order.po_number} created successfully`,
+        })
       }
 
-      const response = await axios.post("/api/purchase/orders", orderData)
-      
-      toast({
-        title: "Success",
-        description: `PO ${response.data.order.po_number} created successfully`,
-      })
-      
       setDialogOpen(false)
       resetForm()
       fetchOrders()
@@ -298,7 +370,9 @@ export default function PurchaseOrdersPage() {
 
   const resetForm = () => {
     setFormData({
+      partyType: "Vendor",
       vendorId: "",
+      constructorId: "",
       projectId: "",
       requisitionId: "",
       orderDate: new Date().toISOString().split("T")[0],
@@ -329,13 +403,18 @@ export default function PurchaseOrdersPage() {
     }])
     setDiscount("0")
     setTax("0")
+    setIsEditMode(false)
+    setEditingId(null)
   }
 
   const handleViewOrder = async (order: any) => {
     try {
       setLoading(true)
       const response = await axios.get(`/api/purchase/orders/${order.id}`)
-      setSelectedOrder(response.data)
+      const { order: po, items, schedules, payments, deliveries } = response.data
+      // API nests the header under `order` and names schedules `schedules`;
+      // flatten so the modal's selectedOrder.* / .items / .payment_schedules resolve.
+      setSelectedOrder({ ...po, items, payment_schedules: schedules, payments, deliveries })
       setViewDialogOpen(true)
     } catch (error) {
       console.error("Error fetching order details:", error)
@@ -353,14 +432,56 @@ export default function PurchaseOrdersPage() {
     try {
       setLoading(true)
       const response = await axios.get(`/api/purchase/orders/${order.id}`)
-      setSelectedOrder(response.data)
-      setIsEditMode(true)
-      setViewDialogOpen(true)
-      
-      toast({
-        title: "Edit Mode",
-        description: "You can now edit this purchase order",
+      const { order: po, items: poItems } = response.data
+      const dateOnly = (d: any) => (d ? String(d).split("T")[0] : "")
+
+      // Populate the create form with the existing PO, then reuse it as an edit form.
+      setFormData({
+        partyType: po.party_type === "Contractor" ? "Contractor" : "Vendor",
+        vendorId: po.vendor_id != null ? String(po.vendor_id) : "",
+        constructorId: po.constructor_id != null ? String(po.constructor_id) : "",
+        projectId: po.project_id != null ? String(po.project_id) : "",
+        requisitionId: po.requisition_id != null ? String(po.requisition_id) : "",
+        orderDate: dateOnly(po.order_date) || new Date().toISOString().split("T")[0],
+        expectedDeliveryDate: dateOnly(po.expected_delivery_date),
+        deliveryAddress: po.delivery_address || "",
+        contactPerson: po.contact_person || "",
+        contactPhone: po.contact_phone || "",
+        paymentTerms: po.payment_terms || "",
+        deliveryTerms: po.delivery_terms || "",
+        warranty: po.warranty || "",
+        notes: po.notes || "",
+        preparedById: po.prepared_by != null ? String(po.prepared_by) : "",
       })
+
+      setItems(
+        poItems && poItems.length > 0
+          ? poItems.map((it: any) => ({
+              expenseHeadId: it.expense_head_id != null ? String(it.expense_head_id) : "",
+              materialType: it.material_type || "",
+              materialSpecification: it.material_specification || "",
+              unitOfMeasurement: it.unit_of_measurement || "",
+              qty: it.qty != null ? String(it.qty) : "",
+              rate: it.rate != null ? String(it.rate) : "",
+              totalPrice: it.amount != null ? String(it.amount) : "0",
+            }))
+          : [{
+              expenseHeadId: "",
+              materialType: "",
+              materialSpecification: "",
+              unitOfMeasurement: "",
+              qty: "",
+              rate: "",
+              totalPrice: "0",
+            }]
+      )
+
+      setDiscount(String(po.discount_amount ?? 0))
+      setTax(String(po.tax_amount ?? 0))
+      setEditingId(po.id)
+      setSelectedOrder(po)
+      setIsEditMode(true)
+      setDialogOpen(true)
     } catch (error) {
       console.error("Error fetching order for edit:", error)
       toast({
@@ -430,7 +551,7 @@ export default function PurchaseOrdersPage() {
         <head>
           <title>PO ${order.po_number}</title>
           <style>
-            body { font-family: Arial, sans-serif; padding: 20px; }
+            body { font-family: Inter-tight, Arial, sans-serif; padding: 20px; }
             .header { text-align: center; margin-bottom: 20px; }
             .title { font-size: 24px; font-weight: bold; }
             .subtitle { font-size: 14px; color: #666; }
@@ -452,16 +573,16 @@ export default function PurchaseOrdersPage() {
 
           <div class="details">
             <div class="detail-box">
-              <div class="label">Vendor</div>
-              <div>${order.vendor_name}</div>
+              <div class="label">${order.party_type === "Contractor" ? "Contractor" : "Vendor"}</div>
+              <div>${order.party_name || order.vendor_name || order.constructor_name || ""}</div>
               <div class="label" style="margin-top: 10px;">Order Date</div>
-              <div>${new Date(order.order_date).toLocaleDateString()}</div>
+              <div>${formatDateDMY(order.order_date)}</div>
             </div>
             <div class="detail-box">
               <div class="label">Project</div>
               <div>${order.project_name}</div>
               <div class="label" style="margin-top: 10px;">Expected Delivery</div>
-              <div>${new Date(order.expected_delivery_date).toLocaleDateString()}</div>
+              <div>${formatDateDMY(order.expected_delivery_date)}</div>
             </div>
           </div>
 
@@ -556,6 +677,7 @@ export default function PurchaseOrdersPage() {
       case "Unpaid": return "destructive"
       case "Partial": return "warning"
       case "Fully Paid": return "success"
+      case "Open": return "info"
       default: return "default"
     }
   }
@@ -578,40 +700,88 @@ export default function PurchaseOrdersPage() {
 
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Purchase Orders</h1>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <Dialog
+          open={dialogOpen}
+          onOpenChange={(open) => {
+            setDialogOpen(open)
+            if (!open) resetForm()
+          }}
+        >
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={() => resetForm()}>
               <Plus className="mr-2 h-4 w-4" />
               Create Purchase Order
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Create Purchase Order</DialogTitle>
-              <DialogDescription>Create a new purchase order for vendor</DialogDescription>
+              <DialogTitle>{isEditMode ? "Edit Purchase Order" : "Create Purchase Order"}</DialogTitle>
+              <DialogDescription>
+                {isEditMode ? "Update this purchase order" : "Create a new purchase order for vendor"}
+              </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Basic Information */}
+              {/* Party type: a PO is raised to EITHER a vendor OR a contractor */}
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <Label>Vendor *</Label>
+                  <Label>Party Type *</Label>
                   <Select
-                    value={formData.vendorId}
-                    onValueChange={(value) => setFormData({ ...formData, vendorId: value })}
+                    value={formData.partyType}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, partyType: value, vendorId: "", constructorId: "" })
+                    }
                     required
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select vendor" />
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {vendors.map((vendor) => (
-                        <SelectItem key={vendor.id} value={vendor.id.toString()}>
-                          {vendor.vendor_name}
-                        </SelectItem>
-                      ))}
+                      <SelectItem value="Vendor">Vendor (materials)</SelectItem>
+                      <SelectItem value="Contractor">Contractor (labor/work)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+                {formData.partyType === "Contractor" ? (
+                  <div>
+                    <Label>Contractor *</Label>
+                    <Select
+                      value={formData.constructorId}
+                      onValueChange={(value) => setFormData({ ...formData, constructorId: value })}
+                      required
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select contractor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {constructors.map((c) => (
+                          <SelectItem key={c.id} value={c.id.toString()}>
+                            {c.constructor_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : (
+                  <div>
+                    <Label>Vendor *</Label>
+                    <Select
+                      value={formData.vendorId}
+                      onValueChange={(value) => setFormData({ ...formData, vendorId: value })}
+                      required
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select vendor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {vendors.map((vendor) => (
+                          <SelectItem key={vendor.id} value={vendor.id.toString()}>
+                            {vendor.vendor_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div>
                   <Label>Project *</Label>
                   <Select
@@ -654,19 +824,17 @@ export default function PurchaseOrdersPage() {
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <Label>Order Date *</Label>
-                  <Input
-                    type="date"
+                  <DateField
                     value={formData.orderDate}
-                    onChange={(e) => setFormData({ ...formData, orderDate: e.target.value })}
+                    onChange={(v) => setFormData({ ...formData, orderDate: v })}
                     required
                   />
                 </div>
                 <div>
                   <Label>Expected Delivery Date *</Label>
-                  <Input
-                    type="date"
+                  <DateField
                     value={formData.expectedDeliveryDate}
-                    onChange={(e) => setFormData({ ...formData, expectedDeliveryDate: e.target.value })}
+                    onChange={(v) => setFormData({ ...formData, expectedDeliveryDate: v })}
                     required
                   />
                 </div>
@@ -790,7 +958,8 @@ export default function PurchaseOrdersPage() {
                               step="0.01"
                               value={item.qty}
                               onChange={(e) => handleItemChange(index, "qty", e.target.value)}
-                              required
+                              placeholder={formData.partyType === "Contractor" ? "Open" : ""}
+                              required={formData.partyType !== "Contractor"}
                             />
                           </TableCell>
                           <TableCell>
@@ -799,7 +968,7 @@ export default function PurchaseOrdersPage() {
                               step="0.01"
                               value={item.rate}
                               onChange={(e) => handleItemChange(index, "rate", e.target.value)}
-                              required
+                              required={formData.partyType !== "Contractor"}
                             />
                           </TableCell>
                           <TableCell>{item.totalPrice}</TableCell>
@@ -892,16 +1061,15 @@ export default function PurchaseOrdersPage() {
                           step="0.01"
                           value={schedule.scheduledAmount}
                           onChange={(e) => handleScheduleChange(index, "scheduledAmount", e.target.value)}
-                          required
+                          required={formData.partyType !== "Contractor"}
                         />
                       </div>
                       <div>
                         <Label>Due Date</Label>
-                        <Input
-                          type="date"
+                        <DateField
                           value={schedule.dueDate}
-                          onChange={(e) => handleScheduleChange(index, "dueDate", e.target.value)}
-                          required
+                          onChange={(v) => handleScheduleChange(index, "dueDate", v)}
+                          required={formData.partyType !== "Contractor"}
                         />
                       </div>
                       <div>
@@ -968,7 +1136,9 @@ export default function PurchaseOrdersPage() {
                   Cancel
                 </Button>
                 <Button type="submit" disabled={submitting}>
-                  {submitting ? "Creating..." : "Create Purchase Order"}
+                  {submitting
+                    ? isEditMode ? "Updating..." : "Creating..."
+                    : isEditMode ? "Update Purchase Order" : "Create Purchase Order"}
                 </Button>
               </div>
             </form>
@@ -1063,8 +1233,20 @@ export default function PurchaseOrdersPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>PO Number</TableHead>
-                  <TableHead>Order Date</TableHead>
-                  <TableHead>Vendor</TableHead>
+                  <TableHead
+                    className="cursor-pointer select-none"
+                    onClick={() => toggleSort("order_date")}
+                  >
+                    Order Date
+                    <SortIcon column="order_date" />
+                  </TableHead>
+                  <TableHead
+                    className="cursor-pointer select-none"
+                    onClick={() => toggleSort("vendor_name")}
+                  >
+                    Vendor
+                    <SortIcon column="vendor_name" />
+                  </TableHead>
                   <TableHead>Project</TableHead>
                   <TableHead>Total Amount</TableHead>
                   <TableHead>Paid</TableHead>
@@ -1075,11 +1257,16 @@ export default function PurchaseOrdersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {orders.map((order) => (
+                {sortedOrders.map((order) => (
                   <TableRow key={order.id}>
                     <TableCell className="font-medium">{order.po_number}</TableCell>
-                    <TableCell>{new Date(order.order_date).toLocaleDateString()}</TableCell>
-                    <TableCell>{order.vendor_name}</TableCell>
+                    <TableCell>{formatDateDMY(order.order_date)}</TableCell>
+                    <TableCell>
+                      {order.party_name || order.vendor_name || order.constructor_name}
+                      {order.party_type === "Contractor" && (
+                        <span className="ml-1 text-xs text-muted-foreground">(Contractor)</span>
+                      )}
+                    </TableCell>
                     <TableCell>{order.project_name}</TableCell>
                     <TableCell>৳ {parseFloat(order.total_amount).toFixed(2)}</TableCell>
                     <TableCell>৳ {parseFloat(order.total_paid || 0).toFixed(2)}</TableCell>
@@ -1154,11 +1341,13 @@ export default function PurchaseOrdersPage() {
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Order Date</Label>
-                  <p>{new Date(selectedOrder.order_date).toLocaleDateString()}</p>
+                  <p>{formatDateDMY(selectedOrder.order_date)}</p>
                 </div>
                 <div>
-                  <Label className="text-muted-foreground">Vendor</Label>
-                  <p>{selectedOrder.vendor_name}</p>
+                  <Label className="text-muted-foreground">
+                    {selectedOrder.party_type === "Contractor" ? "Contractor" : "Vendor"}
+                  </Label>
+                  <p>{selectedOrder.party_name || selectedOrder.vendor_name || selectedOrder.constructor_name}</p>
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Project</Label>
@@ -1212,11 +1401,11 @@ export default function PurchaseOrdersPage() {
                   </div>
                   <div className="flex justify-between">
                     <span>Discount:</span>
-                    <span>৳ {parseFloat(selectedOrder.discount || 0).toFixed(2)}</span>
+                    <span>৳ {parseFloat(selectedOrder.discount_amount || 0).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Tax:</span>
-                    <span>৳ {parseFloat(selectedOrder.tax || 0).toFixed(2)}</span>
+                    <span>৳ {parseFloat(selectedOrder.tax_amount || 0).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between font-bold text-lg border-t pt-2">
                     <span>Total:</span>
@@ -1246,7 +1435,7 @@ export default function PurchaseOrdersPage() {
                           <TableCell>৳ {parseFloat(schedule.scheduled_amount).toFixed(2)}</TableCell>
                           <TableCell>৳ {parseFloat(schedule.paid_amount || 0).toFixed(2)}</TableCell>
                           <TableCell>৳ {parseFloat(schedule.due_amount || 0).toFixed(2)}</TableCell>
-                          <TableCell>{new Date(schedule.due_date).toLocaleDateString()}</TableCell>
+                          <TableCell>{formatDateDMY(schedule.due_date)}</TableCell>
                           <TableCell>
                             <Badge variant={schedule.status === "Paid" ? "success" : schedule.status === "Partial" ? "warning" : "default" as any}>
                               {schedule.status}

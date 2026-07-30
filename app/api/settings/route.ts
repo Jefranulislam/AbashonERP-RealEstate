@@ -15,7 +15,7 @@ export async function GET() {
 
     return NextResponse.json({ settings: settings[0] || null })
   } catch (error) {
-    console.error("[v0] Error fetching settings:", error)
+    console.error("Error fetching settings:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    console.log("[v0] Settings POST - Body keys:", Object.keys(body))
+    console.log("Settings POST - Body keys:", Object.keys(body))
     
     const {
       company_name,
@@ -48,13 +48,13 @@ export async function POST(request: Request) {
 
     // Log image URLs for debugging
     if (company_logo) {
-      console.log("[v0] Company logo URL:", company_logo)
+      console.log("Company logo URL:", company_logo)
     }
     if (footer_image) {
-      console.log("[v0] Footer image URL:", footer_image)
+      console.log("Footer image URL:", footer_image)
     }
     if (background_image) {
-      console.log("[v0] Background image URL:", background_image)
+      console.log("Background image URL:", background_image)
     }
 
     // Check if settings exist
@@ -127,7 +127,7 @@ export async function POST(request: Request) {
       settings: result[0],
     })
   } catch (error) {
-    console.error("[v0] Error saving settings:", error)
+    console.error("Error saving settings:", error)
     
     // Check if it's a database size limit error
     if (error instanceof Error && error.message.includes('value too long')) {

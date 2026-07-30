@@ -27,7 +27,7 @@ export async function GET(
 
     return NextResponse.json({ cheque: res[0] })
   } catch (error) {
-    console.error("[v0] Error fetching cheque:", error)
+    console.error("Error fetching cheque:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -73,7 +73,7 @@ export async function PUT(
       cheque: res[0] 
     })
   } catch (error) {
-    console.error("[v0] Error updating cheque:", error)
+    console.error("Error updating cheque:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -93,7 +93,7 @@ export async function DELETE(
     
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("[v0] Error deleting cheque:", error)
+    console.error("Error deleting cheque:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

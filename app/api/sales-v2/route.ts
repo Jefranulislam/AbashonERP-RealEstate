@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { sql } from "@/lib/db"
 import { getCurrentUser } from "@/lib/auth"
+import { buildVoucherNo } from "@/lib/voucher-utils"
 
 // GET - Fetch all sales with full details
 export async function GET(request: NextRequest) {
@@ -305,20 +306,64 @@ export async function POST(request: NextRequest) {
         LIMIT 1
       `
 
-      await sql`
+      const paymentResult = await sql`
         INSERT INTO sale_payments (
           receipt_no, sale_id, customer_id, schedule_id,
-          payment_date, amount, payment_method, status, remarks
+          payment_date, amount, payment_method,
+          bank_cash_id, cheque_number, cheque_date, cheque_bank,
+          transaction_reference, status, remarks
         ) VALUES (
           ${receiptNo}, ${sale.id}, ${data.customerId ? parseInt(data.customerId) : null},
           ${bookingSchedule[0]?.id || null},
           ${data.bookingDate || data.saleDate || new Date().toISOString().split('T')[0]},
           ${bookingAmount},
           ${data.paymentMethod || 'cash'},
+          ${data.bankCashId ? parseInt(data.bankCashId) : null},
+          ${data.chequeNumber || null},
+          ${data.chequeDate || null},
+          ${data.chequeBank || null},
+          ${data.transactionReference || null},
           'received',
           'Booking payment'
         )
+        RETURNING *
       `
+
+      // Create credit voucher if a bank/cash account was selected
+      if (data.bankCashId) {
+        try {
+          const settings = await sql`SELECT auto_create_voucher FROM settings LIMIT 1`
+          // Always create voucher for booking payment when bank/cash account is provided
+          if (settings[0]?.auto_create_voucher !== false) {
+            const voucherNoResult = await sql`
+              SELECT COALESCE(MAX(CAST(SUBSTRING(voucher_no FROM '[0-9]+$') AS INTEGER)), 0) + 1 as next_no
+              FROM vouchers WHERE voucher_type = 'Credit'
+            `
+            const voucherNo = buildVoucherNo('Credit', Number(voucherNoResult[0].next_no))
+
+            const voucher = await sql`
+              INSERT INTO vouchers (
+                voucher_no, voucher_type, project_id, bank_cash_id,
+                date, amount, particulars, is_confirmed
+              ) VALUES (
+                ${voucherNo}, 'Credit', ${data.projectId ? parseInt(data.projectId) : null},
+                ${parseInt(data.bankCashId)},
+                ${data.bookingDate || data.saleDate || new Date().toISOString().split('T')[0]},
+                ${bookingAmount},
+                ${'Booking payment received - ' + saleNo + '. Receipt: ' + receiptNo},
+                true
+              )
+              RETURNING id
+            `
+            await sql`
+              UPDATE sale_payments SET voucher_id = ${voucher[0].id}
+              WHERE id = ${paymentResult[0].id}
+            `
+          }
+        } catch (voucherErr) {
+          console.error('[sales-v2] Voucher creation failed (non-fatal):', voucherErr)
+        }
+      }
     }
 
     step = 'log-activity'

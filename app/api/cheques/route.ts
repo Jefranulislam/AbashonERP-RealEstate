@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
     const res = await query
     return NextResponse.json({ cheques: res })
   } catch (error) {
-    console.error("[v0] Error fetching cheques:", error)
+    console.error("Error fetching cheques:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
       cheque: res[0] 
     })
   } catch (error) {
-    console.error("[v0] Error creating cheque:", error)
+    console.error("Error creating cheque:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

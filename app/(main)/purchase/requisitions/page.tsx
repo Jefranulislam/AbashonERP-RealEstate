@@ -3,8 +3,10 @@
 import type React from "react"
 
 import { useEffect, useState } from "react"
+import { formatDateDMY } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { DateField } from "@/components/ui/date-field"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
@@ -58,7 +60,7 @@ export default function PurchaseRequisitionsPage() {
       const response = await axios.get(`/api/purchase/requisitions?${params.toString()}`)
       setRequisitions(response.data.requisitions)
     } catch (error) {
-      console.error("[v0] Error fetching requisitions:", error)
+      console.error("Error fetching requisitions:", error)
     } finally {
       setLoading(false)
     }
@@ -76,7 +78,7 @@ export default function PurchaseRequisitionsPage() {
       setEmployees(employeesRes.data.employees)
       setExpenseHeads(expenseHeadsRes.data.expenseHeads)
     } catch (error) {
-      console.error("[v0] Error fetching data:", error)
+      console.error("Error fetching data:", error)
     }
   }
 
@@ -103,7 +105,7 @@ export default function PurchaseRequisitionsPage() {
         printDocument('print-requisition-content')
       }, 100)
     } catch (error) {
-      console.error("[v0] Error fetching requisition for print:", error)
+      console.error("Error fetching requisition for print:", error)
       alert("Error loading requisition for printing")
     }
   }
@@ -137,7 +139,7 @@ export default function PurchaseRequisitionsPage() {
       resetForm()
       alert("Requisition submitted successfully!")
     } catch (error) {
-      console.error("[v0] Error saving requisition:", error)
+      console.error("Error saving requisition:", error)
       alert("Error submitting requisition. Please try again.")
     }
   }
@@ -149,7 +151,7 @@ export default function PurchaseRequisitionsPage() {
       await axios.delete(`/api/purchase/requisitions/${id}`)
       fetchRequisitions()
     } catch (error) {
-      console.error("[v0] Error deleting requisition:", error)
+      console.error("Error deleting requisition:", error)
     }
   }
 
@@ -160,7 +162,7 @@ export default function PurchaseRequisitionsPage() {
       setRequisitionItems(response.data.items)
       setViewDialogOpen(true)
     } catch (error) {
-      console.error("[v0] Error fetching requisition details:", error)
+      console.error("Error fetching requisition details:", error)
     }
   }
 
@@ -266,21 +268,19 @@ export default function PurchaseRequisitionsPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="requisitionDate">Requisition Date *</Label>
-                  <Input
+                  <DateField
                     id="requisitionDate"
-                    type="date"
                     value={formData.requisitionDate}
-                    onChange={(e) => setFormData({ ...formData, requisitionDate: e.target.value })}
+                    onChange={(v) => setFormData({ ...formData, requisitionDate: v })}
                     required
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="requiredDate">Required Date</Label>
-                  <Input
+                  <DateField
                     id="requiredDate"
-                    type="date"
                     value={formData.requiredDate}
-                    onChange={(e) => setFormData({ ...formData, requiredDate: e.target.value })}
+                    onChange={(v) => setFormData({ ...formData, requiredDate: v })}
                   />
                 </div>
                 <div className="space-y-2">
@@ -453,9 +453,9 @@ export default function PurchaseRequisitionsPage() {
                         <TableCell>{index + 1}</TableCell>
                         <TableCell>{requisition.project_name}</TableCell>
                         <TableCell>{requisition.employee_name}</TableCell>
-                        <TableCell>{new Date(requisition.requisition_date).toLocaleDateString()}</TableCell>
+                        <TableCell>{formatDateDMY(requisition.requisition_date)}</TableCell>
                         <TableCell>
-                          {requisition.required_date ? new Date(requisition.required_date).toLocaleDateString() : "-"}
+                          {requisition.required_date ? formatDateDMY(requisition.required_date) : "-"}
                         </TableCell>
                         <TableCell className="font-medium">{requisition.mpr_no}</TableCell>
                         <TableCell>${Number(requisition.total_amount).toFixed(2)}</TableCell>
@@ -521,13 +521,13 @@ export default function PurchaseRequisitionsPage() {
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Requisition Date</Label>
-                  <p className="font-medium">{new Date(selectedRequisition.requisition_date).toLocaleDateString()}</p>
+                  <p className="font-medium">{formatDateDMY(selectedRequisition.requisition_date)}</p>
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Required Date</Label>
                   <p className="font-medium">
                     {selectedRequisition.required_date
-                      ? new Date(selectedRequisition.required_date).toLocaleDateString()
+                      ? formatDateDMY(selectedRequisition.required_date)
                       : "-"}
                   </p>
                 </div>

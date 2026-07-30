@@ -11,7 +11,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     const { id } = await params
     const data = await request.json()
-    console.log("[v0] Updating lead:", id, "with data:", data)
+    console.log("Updating lead:", id, "with data:", data)
 
     const result = await sql`
       UPDATE crm_leads
@@ -37,10 +37,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       RETURNING *
     `
 
-    console.log("[v0] Lead updated:", result[0])
+    console.log("Lead updated:", result[0])
     return NextResponse.json({ success: true, lead: result[0] })
   } catch (error) {
-    console.error("[v0] Error updating lead:", error)
+    console.error("Error updating lead:", error)
     return NextResponse.json({ error: "Internal server error", details: error }, { status: 500 })
   }
 }
@@ -62,7 +62,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("[v0] Error deleting lead:", error)
+    console.error("Error deleting lead:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

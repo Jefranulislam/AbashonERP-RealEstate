@@ -19,7 +19,7 @@ export async function GET() {
 
     return NextResponse.json({ locations })
   } catch (error) {
-    console.error("[v0] Error fetching project locations:", error)
+    console.error("Error fetching project locations:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, location: result[0] })
   } catch (error) {
-    console.error("[v0] Error creating project location:", error)
+    console.error("Error creating project location:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

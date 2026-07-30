@@ -51,7 +51,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     return NextResponse.json({ success: true, customer: result[0] })
   } catch (error) {
-    console.error("[v0] Error converting lead:", error)
+    console.error("Error converting lead:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

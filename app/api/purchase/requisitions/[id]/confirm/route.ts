@@ -20,7 +20,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     return NextResponse.json({ success: true, requisition: result[0] })
   } catch (error) {
-    console.error("[v0] Error confirming requisition:", error)
+    console.error("Error confirming requisition:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

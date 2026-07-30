@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
       }, { status: 413 })
     }
 
-    console.log(`[v0] Uploading ${imageType}:`, file.name, `(${Math.round(file.size/1024)}KB)`)
+    console.log(`Uploading ${imageType}:`, file.name, `(${Math.round(file.size/1024)}KB)`)
 
     // Generate filename with timestamp
     const timestamp = Date.now()
@@ -53,12 +53,12 @@ export async function POST(request: NextRequest) {
     const fileData = new Uint8Array(bytes)
 
     await writeFile(filePath, fileData)
-    console.log(`[v0] File saved locally:`, filePath)
+    console.log(`File saved locally:`, filePath)
 
     // Return public URL
     const publicUrl = `/uploads/${filename}`
 
-    console.log(`[v0] Successfully saved locally:`, publicUrl)
+    console.log(`Successfully saved locally:`, publicUrl)
 
     return NextResponse.json({
       success: true,
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error("[v0] Local upload error:", error)
+    console.error("Local upload error:", error)
     return NextResponse.json({ 
       error: "Internal server error: " + (error instanceof Error ? error.message : "Unknown error")
     }, { status: 500 })

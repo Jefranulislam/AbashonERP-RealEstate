@@ -35,7 +35,7 @@ export async function GET(
 
     return NextResponse.json({ user: users[0] })
   } catch (error) {
-    console.error("[v0] Error fetching user:", error)
+    console.error("Error fetching user:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -192,7 +192,7 @@ export async function PUT(
       user: updatedUser[0],
     })
   } catch (error) {
-    console.error("[v0] Error updating user:", error)
+    console.error("Error updating user:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -226,7 +226,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("[v0] Error deleting user:", error)
+    console.error("Error deleting user:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

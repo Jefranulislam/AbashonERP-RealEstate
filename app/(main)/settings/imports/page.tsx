@@ -11,11 +11,22 @@ import { useToast } from "@/hooks/use-toast"
 
 const modules = [
   { key: "vendors", label: "Vendors" },
-  { key: "transactions", label: "Transactions (Vouchers)" },
+  { key: "transactions", label: "Transactions (GL Vouchers + PO/Sale link)" },
+  { key: "vendor_payments", label: "Vendor Payments (AP → updates PO paid)" },
+  { key: "customer_receipts", label: "Customer Receipts (AR → updates sales paid)" },
   { key: "sales", label: "Sales" },
   { key: "product_delivery_received", label: "Product Delivery Received" },
   { key: "purchase_requisitions", label: "Purchase Requisitions" },
   { key: "purchase_orders", label: "Purchase Orders" },
+]
+
+const recommendedOrder = [
+  "1. Vendors",
+  "2. Purchase Requisitions → Purchase Orders → Deliveries",
+  "3. Sales",
+  "4. Transactions (GL) — use po_number on Debit or sale_no on Credit to auto-sync subledgers",
+  "5. Vendor Payments (AP) — alternative/complement for PO paid status",
+  "6. Customer Receipts (AR) — alternative/complement for sales outstanding",
 ]
 
 export default function ImportCenterPage() {
@@ -81,6 +92,23 @@ export default function ImportCenterPage() {
           <p className="text-muted-foreground">Download template, fill Excel/CSV, upload, and migrate module data.</p>
         </div>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Recommended Migration Order (International ERP)</CardTitle>
+          <CardDescription>
+            Import master data first, then operational documents, then GL and payments.
+            Vendor Payments and Customer Receipts follow AP/AR subledger standards (GL + operational link).
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground">
+            {recommendedOrder.map((step) => (
+              <li key={step}>{step}</li>
+            ))}
+          </ol>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

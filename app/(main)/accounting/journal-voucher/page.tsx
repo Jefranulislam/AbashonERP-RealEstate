@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
@@ -7,6 +7,7 @@ import { Plus, Trash2, Printer, Search, Scale, ArrowUpDown } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { DateField } from "@/components/ui/date-field"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
@@ -326,10 +327,10 @@ export default function JournalVoucherPage() {
 
                   <div className="space-y-2">
                     <Label htmlFor="date">Date *</Label>
-                    <Input
+                    <DateField
                       id="date"
-                      type="date"
-                      {...form.register("date")}
+                      value={form.watch("date")}
+                      onChange={(v) => form.setValue("date", v)}
                     />
                     {form.formState.errors.date && (
                       <p className="text-sm text-destructive">{form.formState.errors.date.message}</p>

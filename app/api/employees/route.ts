@@ -9,7 +9,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    console.log("[v0] Fetching employees")
+    console.log("Fetching employees")
     
     // Try with role join first, fallback to simple query if roles table doesn't exist
     try {
@@ -22,7 +22,7 @@ export async function GET() {
         WHERE e.is_active = true
         ORDER BY e.name ASC
       `
-      console.log("[v0] Employees fetched:", employees.length)
+      console.log("Employees fetched:", employees.length)
       return NextResponse.json({ employees })
     } catch (dbError: any) {
       if (dbError.message?.includes('does not exist')) {
@@ -32,13 +32,13 @@ export async function GET() {
           WHERE is_active = true
           ORDER BY name ASC
         `
-        console.log("[v0] Employees fetched (no RBAC):", employees.length)
+        console.log("Employees fetched (no RBAC):", employees.length)
         return NextResponse.json({ employees })
       }
       throw dbError
     }
   } catch (error) {
-    console.error("[v0] Error fetching employees:", error)
+    console.error("Error fetching employees:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await request.json()
-    console.log("[v0] Creating employee with data:", data)
+    console.log("Creating employee with data:", data)
 
     // Check if role_id column exists, if not, insert without it
     try {
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
         )
         RETURNING *
       `
-      console.log("[v0] Employee created:", result[0])
+      console.log("Employee created:", result[0])
       return NextResponse.json({ success: true, employee: result[0] })
     } catch (dbError: any) {
       if (dbError.message?.includes('role_id') && dbError.message?.includes('does not exist')) {
@@ -89,13 +89,13 @@ export async function POST(request: NextRequest) {
           )
           RETURNING *
         `
-        console.log("[v0] Employee created (no role):", result[0])
+        console.log("Employee created (no role):", result[0])
         return NextResponse.json({ success: true, employee: result[0] })
       }
       throw dbError
     }
   } catch (error) {
-    console.error("[v0] Error creating employee:", error)
+    console.error("Error creating employee:", error)
     return NextResponse.json({ error: "Internal server error", details: error }, { status: 500 })
   }
 }

@@ -1,6 +1,7 @@
 "use client"
 
 import { Input } from "@/components/ui/input"
+import { DateField } from "@/components/ui/date-field"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
@@ -21,11 +22,11 @@ export default function SellerLedgerPage() {
             </div>
             <div>
               <Label>From Date</Label>
-              <Input type="date" />
+              <DateField onChange={() => {}} />
             </div>
             <div>
               <Label>To Date</Label>
-              <Input type="date" />
+              <DateField onChange={() => {}} />
             </div>
           </div>
           <div className="text-sm text-muted-foreground">Report generation coming soon.</div>

@@ -7,6 +7,7 @@ import { Download, FileText, FileSpreadsheet, Printer } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { DateField } from "@/components/ui/date-field"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -18,13 +19,7 @@ import {
   TableRow,
   TableFooter,
 } from "@/components/ui/table"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Combobox, type ComboboxOption } from "@/components/ui/combobox"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
@@ -47,13 +42,21 @@ export default function LedgerPage() {
     },
   })
 
-  // Group expense heads by type (using type_name from the API)
-  const incomeHeads = expenseHeads.filter((head: any) => 
-    head.type === "Income" || head.type_name === "Income"
-  )
-  const expenseOnlyHeads = expenseHeads.filter((head: any) => 
-    head.type === "Expense" || head.type_name === "Expense"
-  )
+  // Group expense heads by normal balance. In the database `type` is 'Cr' (income /
+  // credit-normal) or 'Dr' (expense / debit-normal) — there is no "Income"/"Expense" value.
+  const incomeHeads = expenseHeads.filter((head: any) => head.type === "Cr")
+  const expenseOnlyHeads = expenseHeads.filter((head: any) => head.type !== "Cr")
+
+  // Searchable dropdown options: "1110 - Head Name", matching on code + name + path
+  const headToOption = (head: any): ComboboxOption => ({
+    value: String(head.id),
+    label: head.account_code ? `${head.account_code} - ${head.head_name}` : head.head_name,
+    keywords: [head.account_code, head.head_name, head.full_path].filter(Boolean).join(" "),
+  })
+  const accountHeadOptions: ComboboxOption[] = [
+    ...incomeHeads.map(headToOption),
+    ...expenseOnlyHeads.map(headToOption),
+  ]
 
   // Fetch ledger data
   const { data: ledgerData, isLoading: ledgerLoading, error } = useQuery({
@@ -198,7 +201,7 @@ export default function LedgerPage() {
         <title>Ledger Report - ${ledgerData.expenseHead.head_name}</title>
         <style>
           body {
-            font-family: Arial, sans-serif;
+            font-family: Inter-tight, Arial, sans-serif;
             padding: 20px;
             max-width: 1200px;
             margin: 0 auto;
@@ -402,77 +405,30 @@ export default function LedgerPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="expenseHead">Account Head *</Label>
-              <Select
+              <Combobox
+                options={accountHeadOptions}
                 value={selectedExpenseHead}
-                onValueChange={setSelectedExpenseHead}
-              >
-                <SelectTrigger id="expenseHead">
-                  <SelectValue placeholder="Choose account head" />
-                </SelectTrigger>
-                <SelectContent>
-                  {expenseHeadsLoading ? (
-                    <SelectItem value="loading" disabled>Loading...</SelectItem>
-                  ) : (
-                    <>
-                      {/* Income Heads Group */}
-                      {incomeHeads.length > 0 && (
-                        <>
-                          <div className="px-2 py-1.5 text-sm font-semibold text-green-700 bg-green-50">
-                            💰 Income Accounts
-                          </div>
-                          {incomeHeads.map((head: any) => (
-                            <SelectItem key={head.id} value={head.id.toString()}>
-                              <span className="flex items-center gap-2">
-                                <span className="text-green-600">↑</span>
-                                {head.head_name}
-                              </span>
-                            </SelectItem>
-                          ))}
-                        </>
-                      )}
-                      
-                      {/* Expense Heads Group */}
-                      {expenseOnlyHeads.length > 0 && (
-                        <>
-                          <div className="px-2 py-1.5 text-sm font-semibold text-red-700 bg-red-50 mt-1">
-                            💸 Expense Accounts
-                          </div>
-                          {expenseOnlyHeads.map((head: any) => (
-                            <SelectItem key={head.id} value={head.id.toString()}>
-                              <span className="flex items-center gap-2">
-                                <span className="text-red-600">↓</span>
-                                {head.head_name}
-                              </span>
-                            </SelectItem>
-                          ))}
-                        </>
-                      )}
-
-                      {incomeHeads.length === 0 && expenseOnlyHeads.length === 0 && (
-                        <SelectItem value="none" disabled>No accounts found</SelectItem>
-                      )}
-                    </>
-                  )}
-                </SelectContent>
-              </Select>
+                onChange={setSelectedExpenseHead}
+                placeholder="Choose account head"
+                searchPlaceholder="Search by code or name…"
+                emptyText={expenseHeadsLoading ? "Loading…" : "No accounts found"}
+                disabled={expenseHeadsLoading}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="fromDate">From Date</Label>
-              <Input
+              <DateField
                 id="fromDate"
-                type="date"
                 value={fromDate}
-                onChange={(e) => setFromDate(e.target.value)}
+                onChange={(v) => setFromDate(v)}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="toDate">To Date</Label>
-              <Input
+              <DateField
                 id="toDate"
-                type="date"
                 value={toDate}
-                onChange={(e) => setToDate(e.target.value)}
-                min={fromDate}
+                onChange={(v) => setToDate(v)}
               />
             </div>
           </div>
@@ -496,14 +452,14 @@ export default function LedgerPage() {
                   </CardDescription>
                 </div>
                 <div className={`px-4 py-2 rounded-lg ${
-                  (ledgerData.expenseHead.type === "Income" || ledgerData.expenseHead.type_name === "Income")
-                    ? "bg-green-100 text-green-700 border border-green-300" 
+                  ledgerData.expenseHead.type === "Cr"
+                    ? "bg-green-100 text-green-700 border border-green-300"
                     : "bg-red-100 text-red-700 border border-red-300"
                 }`}>
                   <div className="text-xs font-medium">Type</div>
                   <div className="text-sm font-bold flex items-center gap-1">
-                    {(ledgerData.expenseHead.type === "Income" || ledgerData.expenseHead.type_name === "Income") ? "💰" : "💸"}
-                    {ledgerData.expenseHead.type || ledgerData.expenseHead.type_name}
+                    {ledgerData.expenseHead.type === "Cr" ? "💰" : "💸"}
+                    {ledgerData.expenseHead.type === "Cr" ? "Income (Cr)" : "Expense (Dr)"}
                   </div>
                 </div>
               </div>

@@ -2,17 +2,28 @@ import { describe, expect, it } from "vitest"
 import { amountToWordsBDT, normalizePaymentMethod } from "../../lib/payment-utils"
 
 describe("amountToWordsBDT", () => {
-  it("returns exact words for whole amounts", () => {
-    expect(amountToWordsBDT(12345)).toBe("twelve thousand three hundred forty five taka only")
+  it("uses Bangladeshi lakh/crore scales with proper capitalization", () => {
+    expect(amountToWordsBDT(150000)).toBe("One Lakh Fifty Thousand Taka Only")
+    expect(amountToWordsBDT(12345)).toBe("Twelve Thousand Three Hundred Forty Five Taka Only")
+    expect(amountToWordsBDT(10000000)).toBe("One Crore Taka Only")
+    expect(amountToWordsBDT(12534090)).toBe(
+      "One Crore Twenty Five Lakh Thirty Four Thousand Ninety Taka Only"
+    )
   })
 
   it("includes paisa when decimals are present", () => {
-    expect(amountToWordsBDT(1200.5)).toBe("one thousand two hundred taka and fifty paisa only")
+    expect(amountToWordsBDT(1200.5)).toBe("One Thousand Two Hundred Taka and Fifty Paisa Only")
   })
 
   it("handles zero and invalid numbers safely", () => {
-    expect(amountToWordsBDT(0)).toBe("zero taka only")
-    expect(amountToWordsBDT(Number.NaN)).toBe("zero taka only")
+    expect(amountToWordsBDT(0)).toBe("Zero Taka Only")
+    expect(amountToWordsBDT(Number.NaN)).toBe("Zero Taka Only")
+  })
+
+  it("never emits approximations or numerals", () => {
+    const words = amountToWordsBDT(987654321)
+    expect(words.toLowerCase()).not.toContain("approximately")
+    expect(words).not.toMatch(/\d/)
   })
 })
 

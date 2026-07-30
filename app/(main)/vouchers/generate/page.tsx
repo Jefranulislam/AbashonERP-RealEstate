@@ -1,11 +1,13 @@
 // app/(main)/vouchers/generate/page.tsx
 'use client'
 import React, { useState, useEffect } from 'react'
+import { formatDateDMY } from "@/lib/utils"
 import { CustomerReceipt, VendorPayment, JournalVoucher } from '@/components'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { printDocument } from '@/lib/pdf-utils'
+import { amountToWordsBDT } from '@/lib/payment-utils'
 
 interface VoucherData {
   id: string
@@ -58,8 +60,7 @@ export default function GenerateVoucherPage() {
   }
 
   const convertToAmountWords = (amount: number): string => {
-    // Add your number to words conversion logic here
-    return `${amount.toLocaleString()} Taka Only`
+    return amountToWordsBDT(amount)
   }
 
   return (
@@ -128,7 +129,7 @@ export default function GenerateVoucherPage() {
           {documentType === 'customer-receipt' && (
             <CustomerReceipt
               receiptNumber={selectedVoucher.voucher_no}
-              date={new Date(selectedVoucher.date).toLocaleDateString()}
+              date={formatDateDMY(selectedVoucher.date)}
               customerName={selectedVoucher.customer_name || selectedVoucher.vendor_name || 'Customer'}
               amount={selectedVoucher.amount}
               amountInWords={convertToAmountWords(selectedVoucher.amount)}
@@ -143,7 +144,7 @@ export default function GenerateVoucherPage() {
           {documentType === 'vendor-payment' && (
             <VendorPayment
               paymentNumber={selectedVoucher.voucher_no}
-              date={new Date(selectedVoucher.date).toLocaleDateString()}
+              date={formatDateDMY(selectedVoucher.date)}
               vendorName={selectedVoucher.vendor_name || 'Vendor'}
               amount={selectedVoucher.amount}
               amountInWords={convertToAmountWords(selectedVoucher.amount)}
@@ -158,7 +159,7 @@ export default function GenerateVoucherPage() {
           {documentType === 'journal-voucher' && (
             <JournalVoucher
               voucherNumber={selectedVoucher.voucher_no}
-              date={new Date(selectedVoucher.date).toLocaleDateString()}
+              date={formatDateDMY(selectedVoucher.date)}
               entries={[
                 {
                   accountName: selectedVoucher.voucher_type === 'Credit' ? 'Bank Account' : 'Expense Account',

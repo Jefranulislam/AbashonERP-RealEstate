@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ requisitions })
   } catch (error) {
-    console.error("[v0] Error fetching requisitions:", error)
+    console.error("Error fetching requisitions:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -125,8 +125,8 @@ export async function POST(request: NextRequest) {
     console.log("[API] Requisition created successfully")
     return NextResponse.json({ success: true, requisition: result[0] })
   } catch (error: any) {
-    console.error("[v0] Error creating requisition:", error)
-    console.error("[v0] Error details:", {
+    console.error("Error creating requisition:", error)
+    console.error("Error details:", {
       message: error.message,
       code: error.code,
       detail: error.detail,

@@ -11,9 +11,10 @@ interface CustomerReceiptProps {
   amountInWords: string
   description: string
   paymentType?: 'Installment' | 'Booking Money' | 'Signing Money' | 'Other'
-  paymentMethod: 'Cash' | 'Bank Transfer' | 'Cheque' | 'Online'
+  paymentMethod: 'Cash' | 'Bank Transfer' | 'Cheque' | 'Online' | 'Online Transfer' | 'Mobile Banking'
   chequeNumber?: string
   bankName?: string
+  chequeDate?: string
   projectName?: string
   unitFlatInfo?: string
   projectAddress?: string
@@ -39,6 +40,7 @@ export function CustomerReceipt({
   paymentMethod,
   chequeNumber,
   bankName,
+  chequeDate,
   projectName,
   unitFlatInfo,
   projectAddress,
@@ -117,7 +119,7 @@ export function CustomerReceipt({
       companyLogo={companyLogo}
       footerImage={footerImage}
     >
-      <div style={{ padding: '20px 0', fontSize: '12px' }}>
+      <div style={{ padding: '12px 0', fontSize: '12px' }}>
         {/* Customer Information Section */}
         <div style={sectionHeaderStyle}>CUSTOMER INFORMATION</div>
         <table style={tableStyle}>
@@ -177,6 +179,7 @@ export function CustomerReceipt({
             <tr>
               <th style={thStyle}>Payment Type</th>
               <th style={thStyle}>Description</th>
+              <th style={thStyle}>Cheque Date </th>
               <th style={thStyle}>Payment Method</th>
               <th style={thStyle}>Amount (৳)</th>
             </tr>
@@ -185,6 +188,7 @@ export function CustomerReceipt({
             <tr>
               <td style={tdStyle}>{paymentType || 'Installment'}</td>
               <td style={tdStyle}>{description}</td>
+              <td style={tdStyle}>{chequeDate || 'N/A'}</td>
               <td style={tdStyle}>{paymentMethod}</td>
               <td style={tdStyle}>{formatCurrency(amount)}</td>
             </tr>
@@ -192,7 +196,7 @@ export function CustomerReceipt({
         </table>
 
         {/* Bank Details (if applicable) */}
-        {(chequeNumber || bankName) && (
+        {(chequeNumber || bankName || chequeDate) && (
           <div>
             <div style={sectionHeaderStyle}>BANK DETAILS</div>
             <table style={tableStyle}>
@@ -209,13 +213,18 @@ export function CustomerReceipt({
                     <td style={tdStyle}>{bankName}</td>
                   </tr>
                 )}
+                {chequeDate && (
+                  <tr>
+                    <td style={tdStyle}><strong>Cheque Date:</strong></td>
+                    <td style={tdStyle}>{chequeDate}</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
         )}
 
-        {/* Amount Summary */}
-        <div style={sectionHeaderStyle}>AMOUNT SUMMARY</div>
+        {/* Total + Amount in Words — always visible regardless of payment method */}
         <table style={tableStyle}>
           <tbody>
             <tr>
@@ -229,6 +238,7 @@ export function CustomerReceipt({
           </tbody>
         </table>
 
+
         {/* Appreciation Note */}
         <div style={{
           marginTop: '20px',
@@ -236,7 +246,7 @@ export function CustomerReceipt({
           backgroundColor: '#f8f9fa',
           border: '1px solid #dee2e6',
           borderRadius: '5px',
-          fontSize: '11px',
+          fontSize: '9px',
           textAlign: 'center'
         }}>
           <strong>Thank You!</strong><br />

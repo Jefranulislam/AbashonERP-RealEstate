@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     const filter = searchParams.get("filter")
     const search = searchParams.get("search")
 
-    console.log("[v0] Fetching leads with filter:", filter, "search:", search)
+    console.log("Fetching leads with filter:", filter, "search:", search)
 
     let leads
 
@@ -137,11 +137,11 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    console.log("[v0] Leads fetched:", leads.length)
+    console.log("Leads fetched:", leads.length)
 
     return NextResponse.json({ leads })
   } catch (error) {
-    console.error("[v0] Error fetching leads:", error)
+    console.error("Error fetching leads:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await request.json()
-    console.log("[v0] Received lead data:", data)
+    console.log("Received lead data:", data)
 
     // Generate CRM ID
     const crmIdResult = await sql`SELECT COUNT(*) as count FROM crm_leads`
@@ -189,10 +189,10 @@ export async function POST(request: NextRequest) {
       RETURNING *
     `
 
-    console.log("[v0] Lead created:", result[0])
+    console.log("Lead created:", result[0])
     return NextResponse.json({ success: true, lead: result[0] })
   } catch (error) {
-    console.error("[v0] Error creating lead:", error)
+    console.error("Error creating lead:", error)
     return NextResponse.json({ error: "Internal server error", details: error }, { status: 500 })
   }
 }

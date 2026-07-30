@@ -49,7 +49,7 @@ export async function GET(
       items: [delivery],
     })
   } catch (error) {
-    console.error("[v0] Error fetching delivery:", error)
+    console.error("Error fetching delivery:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

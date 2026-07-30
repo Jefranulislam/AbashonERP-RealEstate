@@ -1,8 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { formatDateDMY } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { DateField } from "@/components/ui/date-field"
 import { Label } from "@/components/ui/label"
 import {
   Card,
@@ -160,7 +162,7 @@ export default function PurchaseReportsPage() {
     // Summary Sheet
     const summaryData = [
       ["Purchase Report Summary"],
-      ["Generated:", new Date().toLocaleDateString()],
+      ["Generated:", formatDateDMY(new Date())],
       [""],
       ["Total Orders:", stats.totalOrders],
       ["Total Amount:", `৳${stats.totalAmount.toFixed(2)}`],
@@ -178,7 +180,7 @@ export default function PurchaseReportsPage() {
       "PO Number": p.po_number,
       "Vendor": p.vendor_name,
       "Project": p.project_name,
-      "Payment Date": new Date(p.payment_date).toLocaleDateString(),
+      "Payment Date": formatDateDMY(p.payment_date),
       "Amount": parseFloat(p.amount).toFixed(2),
       "Payment Type": p.payment_type,
       "Payment Method": p.payment_method,
@@ -192,7 +194,7 @@ export default function PurchaseReportsPage() {
       "Delivery No": d.delivery_number,
       "PO Number": d.po_number,
       "Material": d.material_type,
-      "Delivery Date": new Date(d.delivery_date).toLocaleDateString(),
+      "Delivery Date": formatDateDMY(d.delivery_date),
       "Ordered Qty": d.ordered_qty,
       "Delivered Qty": d.delivered_qty,
       "Accepted Qty": d.accepted_qty,
@@ -208,7 +210,7 @@ export default function PurchaseReportsPage() {
       "PO Number": o.po_number,
       "Vendor": o.vendor_name,
       "Project": o.project_name,
-      "Order Date": new Date(o.order_date).toLocaleDateString(),
+      "Order Date": formatDateDMY(o.order_date),
       "Total Amount": parseFloat(o.total_amount).toFixed(2),
       "Paid Amount": parseFloat(o.total_paid || 0).toFixed(2),
       "Due Amount": parseFloat(o.total_due || 0).toFixed(2),
@@ -301,18 +303,16 @@ export default function PurchaseReportsPage() {
             </div>
             <div>
               <Label>Start Date</Label>
-              <Input 
-                type="date" 
+              <DateField
                 value={filters.startDate}
-                onChange={(e) => setFilters({...filters, startDate: e.target.value})}
+                onChange={(v) => setFilters({...filters, startDate: v})}
               />
             </div>
             <div>
               <Label>End Date</Label>
-              <Input 
-                type="date" 
+              <DateField
                 value={filters.endDate}
-                onChange={(e) => setFilters({...filters, endDate: e.target.value})}
+                onChange={(v) => setFilters({...filters, endDate: v})}
               />
             </div>
             <div className="flex items-end">
@@ -489,7 +489,7 @@ export default function PurchaseReportsPage() {
                         <TableCell>{payment.po_number}</TableCell>
                         <TableCell>{payment.vendor_name}</TableCell>
                         <TableCell>{payment.project_name}</TableCell>
-                        <TableCell>{new Date(payment.payment_date).toLocaleDateString()}</TableCell>
+                        <TableCell>{formatDateDMY(payment.payment_date)}</TableCell>
                         <TableCell className="font-medium">৳{parseFloat(payment.amount).toLocaleString()}</TableCell>
                         <TableCell>
                           <Badge variant="outline">{payment.payment_type}</Badge>
@@ -540,7 +540,7 @@ export default function PurchaseReportsPage() {
                         <TableCell className="font-medium">{delivery.delivery_number}</TableCell>
                         <TableCell>{delivery.po_number}</TableCell>
                         <TableCell>{delivery.material_type}</TableCell>
-                        <TableCell>{new Date(delivery.delivery_date).toLocaleDateString()}</TableCell>
+                        <TableCell>{formatDateDMY(delivery.delivery_date)}</TableCell>
                         <TableCell>{delivery.ordered_qty} {delivery.unit_of_measurement}</TableCell>
                         <TableCell>{delivery.delivered_qty} {delivery.unit_of_measurement}</TableCell>
                         <TableCell className="text-green-600">{delivery.accepted_qty}</TableCell>
@@ -604,7 +604,7 @@ export default function PurchaseReportsPage() {
                           <TableCell className="font-medium">{order.po_number}</TableCell>
                           <TableCell>{order.vendor_name}</TableCell>
                           <TableCell>{order.project_name}</TableCell>
-                          <TableCell>{new Date(order.order_date).toLocaleDateString()}</TableCell>
+                          <TableCell>{formatDateDMY(order.order_date)}</TableCell>
                           <TableCell>৳{parseFloat(order.total_amount).toLocaleString()}</TableCell>
                           <TableCell className="text-green-600">৳{parseFloat(order.total_paid || 0).toLocaleString()}</TableCell>
                           <TableCell className="font-bold text-red-600">৳{dueAmount.toLocaleString()}</TableCell>

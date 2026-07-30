@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { formatDateDMY } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
   Table,
@@ -28,6 +29,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
+import { DateField } from "@/components/ui/date-field"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -38,6 +40,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import { Combobox } from "@/components/ui/combobox"
 import { Loader2, Plus, Edit, Trash2, DollarSign, Printer } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { formatDistanceToNow } from "date-fns"
@@ -62,6 +65,16 @@ interface AdvancePayable {
   status: string
   is_active: boolean
   created_at: string
+  expense_head_id?: number
+  expense_head_name?: string
+  expense_head_code?: string
+  bank_cash_id?: number
+  bank_cash_name?: string
+  cheque_number?: string
+  cheque_date?: string
+  po_number?: string
+  payment_number?: string
+  source?: string // 'advance_payable' | 'transaction' (recorded in another module)
 }
 
 interface Project {
@@ -91,6 +104,10 @@ interface FormData {
   description: string
   status: string
   recipientType: string
+  expenseHeadId: number | null
+  bankCashId: number | null
+  chequeNumber: string
+  chequeDate: string
 }
 
 export default function AdvancePayablePage() {
@@ -99,6 +116,8 @@ export default function AdvancePayablePage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [vendors, setVendors] = useState<Vendor[]>([])
   const [constructors, setConstructors] = useState<Constructor[]>([])
+  const [expenseHeads, setExpenseHeads] = useState<any[]>([])
+  const [bankAccounts, setBankAccounts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [selectedProject, setSelectedProject] = useState<string>("all")
@@ -123,6 +142,10 @@ export default function AdvancePayablePage() {
     description: "",
     status: "Pending",
     recipientType: "vendor",
+    expenseHeadId: null,
+    bankCashId: null,
+    chequeNumber: "",
+    chequeDate: "",
   })
 
   useEffect(() => {
@@ -136,24 +159,30 @@ export default function AdvancePayablePage() {
   const fetchData = async () => {
     try {
       setLoading(true)
-      const [projectsRes, vendorsRes, constructorsRes, advancePayablesRes] = await Promise.all([
+      const [projectsRes, vendorsRes, constructorsRes, advancePayablesRes, headsRes, banksRes] = await Promise.all([
         fetch("/api/projects"),
         fetch("/api/vendors"),
         fetch("/api/constructors"),
         fetch("/api/advance-payables"),
+        fetch("/api/finance/expense-heads"),
+        fetch("/api/finance/bank-cash"),
       ])
 
-      const [projectsData, vendorsData, constructorsData, advancePayablesData] = await Promise.all([
+      const [projectsData, vendorsData, constructorsData, advancePayablesData, headsData, banksData] = await Promise.all([
         projectsRes.json(),
         vendorsRes.json(),
         constructorsRes.json(),
         advancePayablesRes.json(),
+        headsRes.json(),
+        banksRes.json(),
       ])
 
       setProjects(projectsData.projects || [])
       setVendors(vendorsData.vendors || [])
       setConstructors(constructorsData.constructors || [])
       setAdvancePayables(advancePayablesData.advancePayables || [])
+      setExpenseHeads(headsData.expenseHeads || [])
+      setBankAccounts(banksData.bankCashAccounts || [])
     } catch (error) {
       console.error("Error fetching data:", error)
       toast({
@@ -217,6 +246,10 @@ export default function AdvancePayablePage() {
       description: "",
       status: "Pending",
       recipientType: "vendor",
+      expenseHeadId: null,
+      bankCashId: null,
+      chequeNumber: "",
+      chequeDate: "",
     })
   }
 
@@ -276,6 +309,15 @@ export default function AdvancePayablePage() {
   }
 
   const handleEdit = (record: AdvancePayable) => {
+    // Records that originate from other modules (purchase payments etc.)
+    // are read-only here — edit them in their own module.
+    if (record.source === "transaction") {
+      toast({
+        title: "Read-only record",
+        description: "This payment was recorded in another module (e.g. Purchase Payments). Edit it there.",
+      })
+      return
+    }
     setSelectedRecord(record)
     setFormData({
       projectId: record.project_id,
@@ -289,6 +331,10 @@ export default function AdvancePayablePage() {
       description: record.description || "",
       status: record.status || "Pending",
       recipientType: record.vendor_id ? "vendor" : "constructor",
+      expenseHeadId: record.expense_head_id || null,
+      bankCashId: record.bank_cash_id || null,
+      chequeNumber: record.cheque_number || "",
+      chequeDate: record.cheque_date?.split("T")[0] || "",
     })
     setEditOpen(true)
   }
@@ -360,6 +406,13 @@ export default function AdvancePayablePage() {
   }
 
   const handleDelete = (record: AdvancePayable) => {
+    if (record.source === "transaction") {
+      toast({
+        title: "Read-only record",
+        description: "This payment was recorded in another module (e.g. Purchase Payments). Delete it there.",
+      })
+      return
+    }
     setSelectedRecord(record)
     setDeleteOpen(true)
   }
@@ -551,10 +604,9 @@ export default function AdvancePayablePage() {
         </div>
         <div>
           <Label>Payment Date *</Label>
-          <Input
-            type="date"
+          <DateField
             value={formData.paymentDate}
-            onChange={(e) => handleInputChange("paymentDate", e.target.value)}
+            onChange={(v) => handleInputChange("paymentDate", v)}
           />
         </div>
       </div>
@@ -590,6 +642,61 @@ export default function AdvancePayablePage() {
           </Select>
         </div>
       </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label>Head of Account</Label>
+          <Combobox
+            options={expenseHeads.map((head: any) => ({
+              value: String(head.id),
+              label: head.account_code ? `${head.account_code} - ${head.head_name}` : head.head_name,
+              keywords: [head.account_code, head.head_name, head.full_path].filter(Boolean).join(" "),
+            }))}
+            value={formData.expenseHeadId?.toString() || ""}
+            onChange={(v) => handleInputChange("expenseHeadId", v ? parseInt(v) : null)}
+            placeholder="Select head of account"
+            searchPlaceholder="Search by code or name…"
+          />
+        </div>
+        <div>
+          <Label>Paid From (Bank/Cash Account)</Label>
+          <Select
+            value={formData.bankCashId?.toString() || ""}
+            onValueChange={(value) => handleInputChange("bankCashId", value ? parseInt(value) : null)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select account" />
+            </SelectTrigger>
+            <SelectContent>
+              {bankAccounts.map((acc: any) => (
+                <SelectItem key={acc.id} value={acc.id.toString()}>
+                  {acc.account_title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {formData.paymentMethod === "Cheque" && (
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label>Cheque Number</Label>
+            <Input
+              placeholder="Enter cheque number"
+              value={formData.chequeNumber}
+              onChange={(e) => handleInputChange("chequeNumber", e.target.value)}
+            />
+          </div>
+          <div>
+            <Label>Cheque Date</Label>
+            <DateField
+              value={formData.chequeDate}
+              onChange={(v) => handleInputChange("chequeDate", v)}
+            />
+          </div>
+        </div>
+      )}
 
       <div>
         <Label>Reference Number</Label>
@@ -749,32 +856,57 @@ export default function AdvancePayablePage() {
                 <TableHead>SL No.</TableHead>
                 <TableHead>Project Name</TableHead>
                 <TableHead>Vendor/Constructor</TableHead>
+                <TableHead>Head of Account</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Amount (৳)</TableHead>
                 <TableHead>Payment Date</TableHead>
                 <TableHead>Method</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Source</TableHead>
                 <TableHead>Options</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {advancePayables.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center text-muted-foreground">
+                  <TableCell colSpan={11} className="text-center text-muted-foreground">
                     No advance/payable records found. Click "Add Payment" to create one.
                   </TableCell>
                 </TableRow>
               ) : (
                 advancePayables.map((record, index) => (
-                  <TableRow key={record.id}>
+                  <TableRow key={`${record.source || "ap"}-${record.id}`}>
                     <TableCell>{index + 1}</TableCell>
                     <TableCell className="font-medium">{record.project_name || "N/A"}</TableCell>
-                    <TableCell>{record.vendor_name || record.constructor_name || "N/A"}</TableCell>
+                    <TableCell>
+                      <div>
+                        {record.vendor_name || record.constructor_name || "N/A"}
+                        <div className="text-xs text-muted-foreground">
+                          {record.constructor_name && !record.vendor_name ? "Contractor" : record.vendor_name ? "Vendor" : ""}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {record.expense_head_name
+                        ? record.expense_head_code
+                          ? `${record.expense_head_code} - ${record.expense_head_name}`
+                          : record.expense_head_name
+                        : "N/A"}
+                    </TableCell>
                     <TableCell>{getPaymentTypeBadge(record.payment_type)}</TableCell>
                     <TableCell className="font-semibold">৳ {formatAmount(record.amount)}</TableCell>
                     <TableCell>{formatDate(record.payment_date)}</TableCell>
                     <TableCell>{record.payment_method || "N/A"}</TableCell>
                     <TableCell>{getStatusBadge(record.status)}</TableCell>
+                    <TableCell>
+                      {record.source === "transaction" ? (
+                        <Badge variant="outline" className="bg-slate-50" title={record.po_number ? `PO: ${record.po_number}` : record.payment_number}>
+                          {record.po_number ? "Purchase" : "Payment"}
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="bg-blue-50">This module</Badge>
+                      )}
+                    </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
                         <Button size="sm" variant="ghost" onClick={() => handlePrint(record)}>
@@ -836,7 +968,7 @@ export default function AdvancePayablePage() {
           <div id="print-payment-content">
             <VendorPayment
               paymentNumber={`AP-${selectedPayment.id.toString().padStart(6, '0')}`}
-              date={new Date(selectedPayment.payment_date).toLocaleDateString()}
+              date={formatDateDMY(selectedPayment.payment_date)}
               vendorName={selectedPayment.vendor_name || selectedPayment.constructor_name || 'Vendor'}
               vendorAddress="Vendor Address" // To be enhanced with actual vendor data
               vendorPhone="Vendor Phone"

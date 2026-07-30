@@ -8,6 +8,7 @@ import { ProfitLossPDF } from "@/components/pdf/profit-loss-pdf"
 import { printDocument, getCompanySettings } from "@/lib/pdf-utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { DateField } from "@/components/ui/date-field"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -168,11 +169,11 @@ export default function ProfitLossPage() {
             </div>
             <div className="space-y-2">
               <Label>From Date *</Label>
-              <Input type="date" value={params.fromDate} onChange={(e) => setParams({...params, fromDate: e.target.value})} max={params.toDate || new Date().toISOString().split("T")[0]} />
+              <DateField value={params.fromDate} onChange={(v) => setParams({...params, fromDate: v})} />
             </div>
             <div className="space-y-2">
               <Label>To Date *</Label>
-              <Input type="date" value={params.toDate} onChange={(e) => setParams({...params, toDate: e.target.value})} min={params.fromDate} max={new Date().toISOString().split("T")[0]} />
+              <DateField value={params.toDate} onChange={(v) => setParams({...params, toDate: v})} />
             </div>
           </div>
           <Button onClick={handleGenerateReport} disabled={isLoading} className="mt-4">

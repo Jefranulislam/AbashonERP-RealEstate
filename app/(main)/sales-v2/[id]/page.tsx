@@ -15,6 +15,7 @@ import {
   ArrowLeft,
   Edit,
   Printer,
+  Receipt,
   DollarSign,
   Calendar,
   User,
@@ -38,6 +39,7 @@ import axios from "axios"
 import { useToast } from "@/hooks/use-toast"
 import { useCurrency } from "@/hooks/use-currency"
 import { BookingReceiptPDF } from "@/components/pdf/booking-receipt-pdf"
+import { MoneyReceiptPDF } from "@/components/pdf/money-receipt-pdf"
 
 // Default terms & conditions
 const DEFAULT_TERMS = `This booking is subject to the terms mentioned in the final agreement.
@@ -74,6 +76,9 @@ export default function SaleDetailPage() {
   const [saleDetails, setSaleDetails] = useState<any>(null)
   const [companySettings, setCompanySettings] = useState<any>({})
   
+  // Payment receipt print state
+  const [printingPayment, setPrintingPayment] = useState<any>(null)
+
   // Terms & Conditions editing state
   const [editingTerms, setEditingTerms] = useState(false)
   const [termsText, setTermsText] = useState("")
@@ -156,13 +161,21 @@ export default function SaleDetailPage() {
     printDocument('print-booking-content')
   }
 
+  const handlePrintPaymentReceipt = (payment: any) => {
+    setPrintingPayment(payment)
+    // Allow the hidden div to render before printing
+    setTimeout(() => {
+      printDocument('print-money-receipt-content')
+    }, 100)
+  }
+
   const formatDate = (dateString?: string) => {
     if (!dateString) return "-"
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    })
+    const d = new Date(dateString)
+    if (isNaN(d.getTime())) return "-"
+    const day = d.getDate().toString().padStart(2, '0')
+    const month = (d.getMonth() + 1).toString().padStart(2, '0')
+    return `${day}-${month}-${d.getFullYear()}`
   }
 
   if (loading) {
@@ -556,12 +569,13 @@ export default function SaleDetailPage() {
                           <TableHead>Method</TableHead>
                           <TableHead>Account</TableHead>
                           <TableHead>Status</TableHead>
+                          <TableHead></TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {payments?.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                            <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                               No payments recorded yet
                             </TableCell>
                           </TableRow>
@@ -573,7 +587,14 @@ export default function SaleDetailPage() {
                               <TableCell className="text-right text-green-600 font-medium">
                                 {formatAmount(payment.amount)}
                               </TableCell>
-                              <TableCell className="capitalize">{payment.payment_method}</TableCell>
+                              <TableCell className="capitalize">
+                                {payment.payment_method?.replace('_', ' ')}
+                                {payment.cheque_number && (
+                                  <span className="text-xs text-muted-foreground block">
+                                    Chq: {payment.cheque_number}
+                                  </span>
+                                )}
+                              </TableCell>
                               <TableCell>{payment.bank_account_name || "-"}</TableCell>
                               <TableCell>
                                 <Badge className={
@@ -583,6 +604,16 @@ export default function SaleDetailPage() {
                                 }>
                                   {payment.status}
                                 </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handlePrintPaymentReceipt(payment)}
+                                  title="Print money receipt"
+                                >
+                                  <Receipt className="h-4 w-4" />
+                                </Button>
                               </TableCell>
                             </TableRow>
                           ))
@@ -703,7 +734,7 @@ export default function SaleDetailPage() {
         </div>
       </div>
 
-      {/* Print Template (hidden div for printing) */}
+      {/* Print Template - Booking Receipt */}
       <div id="print-booking-content" style={{ display: 'none' }}>
         <BookingReceiptPDF
           booking={sale}
@@ -715,6 +746,44 @@ export default function SaleDetailPage() {
           backgroundImage={companySettings.background_image}
         />
       </div>
+
+      {/* Print Template - Money Receipt (per payment) */}
+      {printingPayment && (
+        <div id="print-money-receipt-content" style={{ display: 'none' }}>
+          <MoneyReceiptPDF
+            receipt={{
+              receipt_no: printingPayment.receipt_no,
+              payment_date: printingPayment.payment_date,
+              customer_name: sale.customer_name,
+              customer_phone: sale.customer_phone,
+              customer_address: sale.customer_address,
+              project_name: sale.project_name,
+              product_name: sale.product_name,
+              unit_no: sale.unit_no,
+              floor_no: sale.floor_no,
+              sale_no: sale.sale_no,
+              amount: printingPayment.amount,
+              payment_method: printingPayment.payment_method,
+              cheque_number: printingPayment.cheque_number,
+              cheque_date: printingPayment.cheque_date,
+              cheque_bank: printingPayment.cheque_bank,
+              transaction_reference: printingPayment.transaction_reference,
+              bank_account_name: printingPayment.bank_account_name,
+              remarks: printingPayment.remarks,
+              received_by_name: printingPayment.received_by_name,
+              net_price: sale.net_price,
+              total_paid: totalPaid,
+              outstanding_amount: outstanding,
+            }}
+            companyName={companySettings.company_name}
+            companyAddress={companySettings.company_address}
+            currencySymbol={companySettings.currency_symbol}
+            companyLogo={companySettings.company_logo}
+            footerImage={companySettings.footer_image}
+            backgroundImage={companySettings.background_image}
+          />
+        </div>
+      )}
     </div>
   )
 }

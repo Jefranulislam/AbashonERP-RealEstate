@@ -9,7 +9,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    console.log("[v0] Fetching projects")
+    console.log("Fetching projects")
     const projects = await sql`
       SELECT 
         p.*,
@@ -20,10 +20,10 @@ export async function GET() {
       ORDER BY p.created_at DESC
     `
 
-    console.log("[v0] Projects fetched:", projects.length)
+    console.log("Projects fetched:", projects.length)
     return NextResponse.json({ projects })
   } catch (error) {
-    console.error("[v0] Error fetching projects:", error)
+    console.error("Error fetching projects:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -36,31 +36,33 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await request.json()
-    console.log("[v0] Creating project with data:", data)
+    console.log("Creating project with data:", data)
 
     const result = await sql`
       INSERT INTO projects (
         project_name, project_location_id, address, facing, building_height,
         land_area, project_launching_date, hand_over_date, description, is_active
       ) VALUES (
-        ${data.projectName}, 
-        ${data.projectLocationId ? Number.parseInt(data.projectLocationId) : null}, 
-        ${data.address || null}, 
-        ${data.facing || null}, 
-        ${data.buildingHeight || null}, 
+        ${data.projectName},
+        ${data.projectLocationId ? Number.parseInt(data.projectLocationId) : null},
+        ${data.address || null},
+        ${data.facing || null},
+        ${data.buildingHeight || null},
         ${data.landArea || null},
-        ${data.projectLaunchingDate || null}, 
-        ${data.handOverDate || null}, 
-        ${data.description || null}, 
+        ${data.projectLaunchingDate || null},
+        ${data.handOverDate || null},
+        ${data.description || null},
         ${data.isActive !== false}
       )
       RETURNING *
     `
 
-    console.log("[v0] Project created:", result[0])
-    return NextResponse.json({ success: true, project: result[0] })
+    const project = result[0]
+
+    console.log("Project created:", project)
+    return NextResponse.json({ success: true, project })
   } catch (error) {
-    console.error("[v0] Error creating project:", error)
+    console.error("Error creating project:", error)
     return NextResponse.json({ error: "Internal server error", details: error }, { status: 500 })
   }
 }

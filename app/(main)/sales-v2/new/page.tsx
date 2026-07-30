@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { printDocument } from "@/lib/pdf-utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { DateField } from "@/components/ui/date-field"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -51,6 +52,7 @@ export default function NewBookingPage() {
   // Payment plan & additional items
   const [paymentSchedules, setPaymentSchedules] = useState<PaymentScheduleItem[]>([])
   const [additionalItems, setAdditionalItems] = useState<AdditionalItem[]>([])
+  const [bankCashAccounts, setBankCashAccounts] = useState<any[]>([])
 
   // Form data
   const [formData, setFormData] = useState({
@@ -65,6 +67,12 @@ export default function NewBookingPage() {
     discountPercent: "",
     discountAmount: "",
     bookingAmount: "",
+    bookingPaymentMethod: "cash",
+    bookingBankCashId: "",
+    bookingChequeNumber: "",
+    bookingChequeDate: "",
+    bookingChequeBank: "",
+    bookingTransactionReference: "",
     downPayment: "",
     paymentPlan: "custom",
     installmentCount: "12",
@@ -91,17 +99,19 @@ export default function NewBookingPage() {
   useEffect(() => {
     const fetchMasterData = async () => {
       try {
-        const [customersRes, projectsRes, employeesRes, settingsRes] = await Promise.all([
+        const [customersRes, projectsRes, employeesRes, settingsRes, bankCashRes] = await Promise.all([
           axios.get("/api/customers"),
           axios.get("/api/projects"),
           axios.get("/api/employees"),
           axios.get("/api/settings"),
+          axios.get("/api/finance/bank-cash"),
         ])
 
         setCustomers(customersRes.data.customers)
         setProjects(projectsRes.data.projects)
         setEmployees(employeesRes.data.employees)
         setCompanySettings(settingsRes.data.settings || {})
+        setBankCashAccounts(bankCashRes.data.bankCashAccounts || [])
       } catch (error) {
         console.error("Error fetching master data:", error)
       }
@@ -135,7 +145,11 @@ export default function NewBookingPage() {
       if (!editId) return
       try {
         const response = await axios.get(`/api/sales-v2/${editId}`)
-        const sale = response.data.sale
+        const { sale, schedules, payments, additionalItems: loadedAdditionalItems } = response.data
+
+        // Find the initial booking payment to pre-fill payment method details
+        const bookingPayment = payments?.find((p: any) => p.status !== 'cancelled' && p.status !== 'bounced') || null
+
         setFormData({
           customerId: String(sale.customer_id || ""),
           sellerId: String(sale.seller_id || ""),
@@ -148,6 +162,12 @@ export default function NewBookingPage() {
           discountPercent: String(sale.discount_percent || ""),
           discountAmount: String(sale.discount_amount || ""),
           bookingAmount: String(sale.booking_amount || ""),
+          bookingPaymentMethod: bookingPayment?.payment_method || "cash",
+          bookingBankCashId: bookingPayment?.bank_cash_id ? String(bookingPayment.bank_cash_id) : "",
+          bookingChequeNumber: bookingPayment?.cheque_number || "",
+          bookingChequeDate: bookingPayment?.cheque_date?.split("T")[0] || "",
+          bookingChequeBank: bookingPayment?.cheque_bank || "",
+          bookingTransactionReference: bookingPayment?.transaction_reference || "",
           downPayment: String(sale.down_payment || ""),
           paymentPlan: sale.payment_plan || "custom",
           installmentCount: String(sale.installment_count || "12"),
@@ -159,6 +179,37 @@ export default function NewBookingPage() {
           referenceBy: sale.reference_by || "",
           notes: sale.notes || "",
         })
+
+        // Populate payment schedules (only installment types for the dynamic plan)
+        if (schedules && schedules.length > 0) {
+          const installmentSchedules = schedules
+            .filter((s: any) => s.schedule_type === 'installment' || (s.is_custom && s.schedule_type !== 'booking' && s.schedule_type !== 'down_payment'))
+            .map((s: any) => ({
+              id: String(s.id),
+              type: s.schedule_type as 'installment' | 'custom',
+              label: s.payment_label || `Installment ${s.installment_no}`,
+              percentage: String(s.percentage || ""),
+              amount: String(s.amount || ""),
+              month: s.due_month ? String(s.due_month) : s.due_date ? String(new Date(s.due_date).getMonth() + 1) : "",
+              year: s.due_year ? String(s.due_year) : s.due_date ? String(new Date(s.due_date).getFullYear()) : "",
+            }))
+          setPaymentSchedules(installmentSchedules)
+        }
+
+        // Populate additional items
+        if (loadedAdditionalItems && loadedAdditionalItems.length > 0) {
+          const mappedItems = loadedAdditionalItems.map((item: any) => ({
+            id: String(item.id),
+            productId: item.product_id ? String(item.product_id) : "",
+            itemType: item.item_type,
+            itemName: item.item_name,
+            basePrice: String(item.base_price || ""),
+            discountAmount: String(item.discount_amount || ""),
+            netPrice: String(item.net_price || ""),
+            selected: true,
+          }))
+          setAdditionalItems(mappedItems)
+        }
       } catch (error) {
         console.error("Error loading sale:", error)
         toast({
@@ -280,6 +331,12 @@ export default function NewBookingPage() {
 
       const submitData = {
         ...formData,
+        paymentMethod: formData.bookingPaymentMethod,
+        bankCashId: formData.bookingBankCashId || null,
+        chequeNumber: formData.bookingChequeNumber || null,
+        chequeDate: formData.bookingChequeDate || null,
+        chequeBank: formData.bookingChequeBank || null,
+        transactionReference: formData.bookingTransactionReference || null,
         additionalItems: additionalItems.filter(i => i.selected),
         paymentSchedules: paymentSchedules,
         additionalItemsTotal,
@@ -426,18 +483,16 @@ export default function NewBookingPage() {
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Booking Date</Label>
-                  <Input
-                    type="date"
+                  <DateField
                     value={formData.bookingDate}
-                    onChange={(e) => setFormData({ ...formData, bookingDate: e.target.value, saleDate: e.target.value })}
+                    onChange={(v) => setFormData({ ...formData, bookingDate: v, saleDate: v })}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>Expected Handover Date</Label>
-                  <Input
-                    type="date"
+                  <DateField
                     value={formData.expectedHandoverDate}
-                    onChange={(e) => setFormData({ ...formData, expectedHandoverDate: e.target.value })}
+                    onChange={(v) => setFormData({ ...formData, expectedHandoverDate: v })}
                   />
                 </div>
               </div>
@@ -566,6 +621,89 @@ export default function NewBookingPage() {
                   />
                 </div>
               </div>
+
+              {/* Booking Payment Details */}
+              {parseFloat(formData.bookingAmount) > 0 && (
+                <div className="p-4 border rounded-lg space-y-4">
+                  <h4 className="font-medium">Booking Payment Details</h4>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Payment Method *</Label>
+                      <Select
+                        value={formData.bookingPaymentMethod}
+                        onValueChange={(value) => setFormData({ ...formData, bookingPaymentMethod: value, bookingChequeNumber: "", bookingChequeDate: "", bookingChequeBank: "", bookingTransactionReference: "" })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select method" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="cash">Cash</SelectItem>
+                          <SelectItem value="cheque">Cheque</SelectItem>
+                          <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                          <SelectItem value="online">Online/Mobile Banking</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Deposit To (Bank/Cash Account)</Label>
+                      <Select
+                        value={formData.bookingBankCashId}
+                        onValueChange={(value) => setFormData({ ...formData, bookingBankCashId: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select account" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {bankCashAccounts.map((acc) => (
+                            <SelectItem key={acc.id} value={String(acc.id)}>
+                              {acc.account_title}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {formData.bookingPaymentMethod === "cheque" && (
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <div className="space-y-2">
+                        <Label>Cheque Number *</Label>
+                        <Input
+                          value={formData.bookingChequeNumber}
+                          onChange={(e) => setFormData({ ...formData, bookingChequeNumber: e.target.value })}
+                          placeholder="Enter cheque number"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Cheque Date *</Label>
+                        <DateField
+                          value={formData.bookingChequeDate}
+                          onChange={(v) => setFormData({ ...formData, bookingChequeDate: v })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Bank Name</Label>
+                        <Input
+                          value={formData.bookingChequeBank}
+                          onChange={(e) => setFormData({ ...formData, bookingChequeBank: e.target.value })}
+                          placeholder="e.g. Dutch-Bangla Bank"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {(formData.bookingPaymentMethod === "bank_transfer" || formData.bookingPaymentMethod === "online") && (
+                    <div className="space-y-2">
+                      <Label>Transaction Reference</Label>
+                      <Input
+                        value={formData.bookingTransactionReference}
+                        onChange={(e) => setFormData({ ...formData, bookingTransactionReference: e.target.value })}
+                        placeholder="Enter transaction ID or reference number"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Summary */}
               <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">

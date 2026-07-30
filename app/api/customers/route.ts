@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const search = searchParams.get("search")
 
-    console.log("[v0] Fetching customers with search:", search)
+    console.log("Fetching customers with search:", search)
 
     let customers
 
@@ -31,11 +31,11 @@ export async function GET(request: NextRequest) {
       `
     }
 
-    console.log("[v0] Customers fetched:", customers.length)
+    console.log("Customers fetched:", customers.length)
 
     return NextResponse.json({ customers })
   } catch (error) {
-    console.error("[v0] Error fetching customers:", error)
+    console.error("Error fetching customers:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await request.json()
-    console.log("[v0] Creating customer with data:", data)
+    console.log("Creating customer with data:", data)
 
     // Generate Customer ID
     const customerIdResult = await sql`SELECT COUNT(*) as count FROM customers`
@@ -80,10 +80,10 @@ export async function POST(request: NextRequest) {
       RETURNING *
     `
 
-    console.log("[v0] Customer created:", result[0])
+    console.log("Customer created:", result[0])
     return NextResponse.json({ success: true, customer: result[0] })
   } catch (error) {
-    console.error("[v0] Error creating customer:", error)
+    console.error("Error creating customer:", error)
     return NextResponse.json({ error: "Internal server error", details: error }, { status: 500 })
   }
 }

@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const projectId = searchParams.get("projectId")
 
-    console.log("[v0] Fetching products with projectId:", projectId)
+    console.log("Fetching products with projectId:", projectId)
 
     let products
 
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ products })
   } catch (error) {
-    console.error("[v0] Error fetching products:", error)
+    console.error("Error fetching products:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await request.json()
-    console.log("[v0] Received product data:", data)
+    console.log("Received product data:", data)
 
     const result = await sql`
       INSERT INTO products (
@@ -74,10 +74,10 @@ export async function POST(request: NextRequest) {
       RETURNING *
     `
 
-    console.log("[v0] Product created:", result[0])
+    console.log("Product created:", result[0])
     return NextResponse.json({ success: true, product: result[0] })
   } catch (error) {
-    console.error("[v0] Error creating product:", error)
+    console.error("Error creating product:", error)
     return NextResponse.json({ error: "Internal server error", details: error }, { status: 500 })
   }
 }

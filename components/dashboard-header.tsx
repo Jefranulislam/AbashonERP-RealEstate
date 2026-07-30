@@ -31,7 +31,7 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
       router.push("/login")
       router.refresh()
     } catch (error) {
-      console.error("[v0] Logout error:", error)
+      console.error("Logout error:", error)
     }
   }
 

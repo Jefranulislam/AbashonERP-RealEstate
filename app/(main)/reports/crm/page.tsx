@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
+import { DateField } from "@/components/ui/date-field"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { FileText } from "lucide-react"
 
@@ -16,7 +17,7 @@ export default function CRMReportsPage() {
   })
 
   const handleGenerateReport = () => {
-    console.log("[v0] Generating CRM report:", reportType, filters)
+    console.log("Generating CRM report:", reportType, filters)
     // TODO: Implement report generation
   }
 
@@ -51,22 +52,18 @@ export default function CRMReportsPage() {
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="fromDate">From Date</Label>
-              <input
+              <DateField
                 id="fromDate"
-                type="date"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 value={filters.fromDate}
-                onChange={(e) => setFilters({ ...filters, fromDate: e.target.value })}
+                onChange={(v) => setFilters({ ...filters, fromDate: v })}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="toDate">To Date</Label>
-              <input
+              <DateField
                 id="toDate"
-                type="date"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 value={filters.toDate}
-                onChange={(e) => setFilters({ ...filters, toDate: e.target.value })}
+                onChange={(v) => setFilters({ ...filters, toDate: v })}
               />
             </div>
           </div>

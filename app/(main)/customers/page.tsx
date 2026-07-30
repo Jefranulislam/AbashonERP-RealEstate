@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { formatDateDMY } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -25,10 +26,10 @@ export default function CustomersPage() {
       if (search) params.append("search", search)
 
       const response = await axios.get(`/api/customers?${params.toString()}`)
-      console.log("[v0] Customers fetched:", response.data)
+      console.log("Customers fetched:", response.data)
       setCustomers(response.data.customers || [])
     } catch (error) {
-      console.error("[v0] Error fetching customers:", error)
+      console.error("Error fetching customers:", error)
       toast({
         title: "Error",
         description: "Failed to fetch customers",
@@ -59,7 +60,7 @@ export default function CustomersPage() {
       })
       fetchCustomers()
     } catch (error) {
-      console.error("[v0] Error deleting customer:", error)
+      console.error("Error deleting customer:", error)
       toast({
         title: "Error",
         description: "Failed to delete customer",
@@ -150,7 +151,7 @@ export default function CustomersPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {customer.birth_date ? new Date(customer.birth_date).toLocaleDateString() : "-"}
+                          {customer.birth_date ? formatDateDMY(customer.birth_date) : "-"}
                         </TableCell>
                         <TableCell>{customer.phone}</TableCell>
                         <TableCell>{customer.whatsapp || "-"}</TableCell>

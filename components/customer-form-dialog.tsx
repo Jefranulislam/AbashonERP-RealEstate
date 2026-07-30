@@ -6,6 +6,7 @@ import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { DateField } from "@/components/ui/date-field"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
@@ -90,7 +91,7 @@ export function CustomerFormDialog({ open, onOpenChange, customer, onSuccess }: 
       onSuccess()
       onOpenChange(false)
     } catch (error) {
-      console.error("[v0] Error saving customer:", error)
+      console.error("Error saving customer:", error)
       toast.error("Failed to save customer")
     }
   }
@@ -165,11 +166,10 @@ export function CustomerFormDialog({ open, onOpenChange, customer, onSuccess }: 
             </div>
             <div className="space-y-2">
               <Label htmlFor="birthDate">Birth Date</Label>
-              <Input
+              <DateField
                 id="birthDate"
-                type="date"
                 value={formData.birthDate}
-                onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
+                onChange={(v) => setFormData({ ...formData, birthDate: v })}
               />
             </div>
             <div className="space-y-2">

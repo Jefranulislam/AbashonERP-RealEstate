@@ -50,7 +50,7 @@ export async function GET() {
       expenseHeads
     })
   } catch (error) {
-    console.error("[v0] Error fetching expense heads:", error)
+    console.error("Error fetching expense heads:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -82,10 +82,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'accountCode must be a 4-digit string (e.g. 4001)' }, { status: 400 })
     }
 
-    // Check uniqueness
-    const existing = await sql`SELECT id FROM income_expense_heads WHERE account_code = ${accountCode} LIMIT 1`
+    // Check uniqueness — account codes are unique across ALL rows, including
+    // archived (is_active=false) ones, so a ledger number never means two things.
+    const existing = await sql`SELECT id, is_active FROM income_expense_heads WHERE account_code = ${accountCode} LIMIT 1`
     if (existing.length > 0) {
-      return NextResponse.json({ error: 'accountCode already in use' }, { status: 400 })
+      const msg = existing[0].is_active
+        ? 'accountCode already in use'
+        : 'accountCode already used by an archived head — reactivate/rename that one, or pick another code'
+      return NextResponse.json({ error: msg }, { status: 400 })
     }
 
     const res = await sql`

@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useEffect, useState } from "react"
+import { formatDateDMY } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -38,6 +39,7 @@ export default function VendorsPage() {
   const [selectedVendor, setSelectedVendor] = useState<any>(null)
   const [formData, setFormData] = useState({
     vendorName: "",
+    contactPerson: "",
     mailingAddress: "",
     website: "",
     phone: "",
@@ -61,7 +63,7 @@ export default function VendorsPage() {
       const response = await axios.get(`/api/vendors?${params.toString()}`)
       setVendors(response.data.vendors)
     } catch (error) {
-      console.error("[v0] Error fetching vendors:", error)
+      console.error("Error fetching vendors:", error)
     } finally {
       setLoading(false)
     }
@@ -92,7 +94,7 @@ export default function VendorsPage() {
       setDialogOpen(false)
       resetForm()
     } catch (error) {
-      console.error("[v0] Error saving vendor:", error)
+      console.error("Error saving vendor:", error)
       toast({
         title: "Error",
         description: "Failed to save vendor. Please try again.",
@@ -117,7 +119,7 @@ export default function VendorsPage() {
       })
       fetchVendors()
     } catch (error) {
-      console.error("[v0] Error deleting vendor:", error)
+      console.error("Error deleting vendor:", error)
       toast({
         title: "Error",
         description: "Failed to delete vendor. Please try again.",
@@ -129,6 +131,7 @@ export default function VendorsPage() {
   const resetForm = () => {
     setFormData({
       vendorName: "",
+      contactPerson: "",
       mailingAddress: "",
       website: "",
       phone: "",
@@ -159,6 +162,7 @@ export default function VendorsPage() {
     setSelectedVendor(vendor)
     setFormData({
       vendorName: vendor.vendor_name,
+      contactPerson: vendor.contact_person || "",
       mailingAddress: vendor.mailing_address || "",
       website: vendor.website || "",
       phone: vendor.phone || "",
@@ -212,6 +216,14 @@ export default function VendorsPage() {
                       value={formData.vendorName}
                       onChange={(e) => setFormData({ ...formData, vendorName: e.target.value })}
                       required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="contactPerson">Contact Person</Label>
+                    <Input
+                      id="contactPerson"
+                      value={formData.contactPerson}
+                      onChange={(e) => setFormData({ ...formData, contactPerson: e.target.value })}
                     />
                   </div>
                   <div className="space-y-2">
@@ -391,7 +403,7 @@ export default function VendorsPage() {
                         <TableCell>{index + 1}</TableCell>
                         <TableCell><Badge variant="outline">{vendor.vendor_code || "-"}</Badge></TableCell>
                         <TableCell className="font-medium">{vendor.vendor_name}</TableCell>
-                        <TableCell>{new Date(vendor.created_at).toLocaleDateString()}</TableCell>
+                        <TableCell>{formatDateDMY(vendor.created_at)}</TableCell>
                         <TableCell>{vendor.mailing_address || "-"}</TableCell>
                         <TableCell>{vendor.phone || "-"}</TableCell>
                         <TableCell>{vendor.email || "-"}</TableCell>

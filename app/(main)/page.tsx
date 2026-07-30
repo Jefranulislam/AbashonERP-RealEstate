@@ -21,7 +21,7 @@ async function getDashboardStats() {
       vendors: Number(vendorsCount.count) || 0,
     }
   } catch (error) {
-    console.error("[v0] Error fetching dashboard stats:", error)
+    console.error("Error fetching dashboard stats:", error)
     return {
       leads: 0,
       customers: 0,

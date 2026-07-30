@@ -5,8 +5,19 @@ import { getCurrentUser } from "@/lib/auth"
 import { isAdminUser } from "@/lib/admin-access"
 import { sql } from "@/lib/db"
 import { isImportModule, type ImportModule } from "@/lib/import-templates"
+import {
+  insertCustomerReceipt,
+  insertDebitCreditVoucher,
+  insertVendorPayment,
+  resolvePoId,
+  resolveSaleId,
+  syncSubledgerFromVoucher,
+  toImportBoolean,
+  type SubledgerLookups,
+} from "@/lib/import-subledger"
 import { buildVoucherNo, normalizeVoucherType } from "@/lib/voucher-utils"
 import { ensureVendorCodeSchema, getNextVendorCode } from "@/lib/vendor-code"
+import { getNextPoNumber } from "@/lib/po-number"
 
 type Row = Record<string, any>
 
@@ -22,7 +33,12 @@ function normalizeKey(value: string): string {
 }
 
 function toNumber(value: any, fallback = 0): number {
-  const n = Number(value)
+  if (typeof value === "number") return Number.isFinite(value) ? value : fallback
+  // Strip commas, currency symbols, and spaces before parsing so values import
+  // as-is (e.g. "2,65,500.00" -> 265500, "৳ 50,000" -> 50000) instead of becoming NaN/0.
+  const cleaned = String(value ?? "").replace(/[^0-9.\-]/g, "")
+  if (cleaned === "" || cleaned === "-" || cleaned === "." || cleaned === "-.") return fallback
+  const n = Number(cleaned)
   return Number.isFinite(n) ? n : fallback
 }
 
@@ -35,6 +51,8 @@ function toBoolean(value: any, fallback = false): boolean {
 
 function toDateString(value: any): string {
   if (!value) return new Date().toISOString().split("T")[0]
+
+  // Excel stores dates as serial numbers — decode to a real calendar date.
   if (typeof value === "number") {
     const excelDate = XLSX.SSF.parse_date_code(value)
     if (excelDate) {
@@ -42,7 +60,40 @@ function toDateString(value: any): string {
       return d.toISOString().split("T")[0]
     }
   }
-  const d = new Date(String(value))
+
+  const raw = String(value).trim()
+  if (!raw) return new Date().toISOString().split("T")[0]
+
+  // Already ISO (yyyy-mm-dd, possibly with a time part) — keep the date part as-is.
+  const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`
+
+  // Day-first formats: dd-mm-yyyy or dd/mm/yyyy (the application standard).
+  // We DELIBERATELY do not defer to `new Date()` here, because it reads
+  // "05-07-2026" as May 7 (US mm-dd) and turns "13-07-2026" into Invalid Date.
+  const dmy = raw.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/)
+  if (dmy) {
+    let [, dd, mm, yy] = dmy
+    let day = parseInt(dd, 10)
+    let month = parseInt(mm, 10)
+    let year = parseInt(yy, 10)
+    if (year < 100) year += year < 70 ? 2000 : 1900
+
+    // If the first field can't be a day but the second can, the file was
+    // actually mm-dd — swap so a stray US-format row still lands correctly.
+    if (day > 12 && month <= 12) {
+      // already dd-mm, fine
+    } else if (month > 12 && day <= 12) {
+      const t = day; day = month; month = t
+    }
+
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
+    }
+  }
+
+  // Fallback for anything else (e.g. "12 July 2026").
+  const d = new Date(raw)
   if (Number.isNaN(d.getTime())) return new Date().toISOString().split("T")[0]
   return d.toISOString().split("T")[0]
 }
@@ -66,17 +117,29 @@ async function parseFileToRows(file: File): Promise<Row[]> {
   throw new Error("Unsupported file type. Please upload CSV or XLSX")
 }
 
-async function buildLookups() {
-  const [projects, customers, products, vendors, employees, expenseHeads, bankCash, requisitions, purchaseOrders] = await Promise.all([
+async function buildLookups(): Promise<SubledgerLookups & {
+  customersByName: Map<string, number>
+  customersByPhone: Map<string, number>
+  productsByName: Map<string, number>
+  productsById: Map<string, number>
+  productsByUnitNo: Map<string, number>
+  vendorsByCode: Map<string, number>
+  employeesByName: Map<string, number>
+  employeesById: Map<string, number>
+  requisitionsByMprNo: Map<string, number>
+}> {
+  const [projects, customers, products, vendors, employees, expenseHeads, bankCash, requisitions, purchaseOrders, sales, constructors] = await Promise.all([
     sql`SELECT id, project_name FROM projects WHERE is_active = true`,
     sql`SELECT id, customer_name, phone FROM customers WHERE is_active = true`,
     sql`SELECT id, product_name, unit_no FROM products WHERE is_active = true`,
     sql`SELECT id, vendor_name, vendor_code FROM vendors WHERE is_active = true`,
     sql`SELECT id, name FROM employees WHERE is_active = true`,
-    sql`SELECT id, head_name FROM income_expense_heads WHERE is_active = true`,
+    sql`SELECT id, head_name, account_code FROM income_expense_heads WHERE is_active = true`,
     sql`SELECT id, account_title FROM bank_cash_accounts WHERE is_active = true`,
     sql`SELECT id, mpr_no FROM purchase_requisitions`,
     sql`SELECT id, po_number FROM purchase_orders`,
+    sql`SELECT id, sale_no FROM sales WHERE is_active = true`,
+    sql`SELECT id, constructor_name FROM constructors WHERE is_active = true`,
   ])
 
   const mapBy = (rows: any[], keyField: string) => {
@@ -111,6 +174,8 @@ async function buildLookups() {
     vendorsByName: mapBy(vendors, "vendor_name"),
     vendorsByCode: mapBy(vendors, "vendor_code"),
     vendorsById: mapBy(vendors, "id"),
+    constructorsByName: mapBy(constructors, "constructor_name"),
+    constructorsById: mapBy(constructors, "id"),
     employeesByName: mapBy(employees, "name"),
     employeesById: mapBy(employees, "id"),
     expenseHeadsByName: mapBy(expenseHeads, "head_name"),
@@ -121,6 +186,8 @@ async function buildLookups() {
     requisitionsByMprNo: mapBy(requisitions, "mpr_no"),
     purchaseOrdersByNumber: mapBy(purchaseOrders, "po_number"),
     purchaseOrdersById: mapBy(purchaseOrders, "id"),
+    salesByNo: mapBy(sales, "sale_no"),
+    salesById: mapBy(sales, "id"),
   }
 }
 
@@ -262,37 +329,130 @@ async function importTransactions(rows: Row[], lookups: Awaited<ReturnType<typeo
             ${row.particulars || row.description || null}, ${row.cheque_number || null}, ${toBoolean(row.is_confirmed)}
           )
         `
+      } else if (voucherType === "Credit" || voucherType === "Debit") {
+        const isConfirmed = toBoolean(row.is_confirmed, true)
+        const { voucherId } = await insertDebitCreditVoucher(
+          lookups,
+          row,
+          voucherType,
+          date,
+          amount,
+          isConfirmed
+        )
+
+        await syncSubledgerFromVoucher(lookups, row, voucherType, voucherId, date, amount)
       } else {
-        // Resolve vendor_id if vendor_name is provided
-        const vendorId = row.vendor_name ? resolveId(lookups.vendorsByName, row.vendor_name) : null
-        const referencePartyType = row.reference_party_type ? String(row.reference_party_type).toUpperCase().trim() : null
-        const referencePartyName = row.reference_party_name ? String(row.reference_party_name).trim() : null
-
-        // Validate that either vendor_id or reference_party_name is provided
-        if (!vendorId && !referencePartyName) {
-          throw new Error("Either vendor_name or reference_party_name must be provided")
-        }
-
-        // If reference_party_name is provided, reference_party_type must be set
-        if (referencePartyName && !referencePartyType) {
-          throw new Error("reference_party_type must be specified when reference_party_name is provided")
-        }
-
-        // Auto-populate reference_party_type as VENDOR if vendor_id is provided
-        const finalReferencePartyType = vendorId && !referencePartyType ? "VENDOR" : referencePartyType
-
-        await sql`
-          INSERT INTO vouchers (
-            voucher_no, voucher_type, project_id, expense_head_id, bank_cash_id,
-            bill_no, date, amount, particulars, cheque_number, is_confirmed,
-            vendor_id, reference_party_type, reference_party_name
-          ) VALUES (
-            ${voucherNo}, ${voucherType}, ${projectId}, ${expenseHeadId}, ${bankCashId},
-            ${row.bill_no || null}, ${date}, ${amount}, ${row.particulars || null}, ${row.cheque_number || null}, ${toBoolean(row.is_confirmed)},
-            ${vendorId || null}, ${finalReferencePartyType || null}, ${referencePartyName || null}
-          )
-        `
+        throw new Error(`Unsupported voucher_type: ${voucherTypeInput}`)
       }
+
+      result.successRows += 1
+    } catch (error) {
+      result.failedRows += 1
+      result.errors.push({ row: i + 2, message: error instanceof Error ? error.message : "Unknown error" })
+    }
+  }
+
+  return result
+}
+
+/** AP subledger import: vendor payment + optional Debit voucher (matches Purchase → Payments UI). */
+async function importVendorPayments(
+  rows: Row[],
+  lookups: SubledgerLookups
+): Promise<ImportResult> {
+  const result: ImportResult = { totalRows: rows.length, successRows: 0, failedRows: 0, errors: [] }
+
+  for (let i = 0; i < rows.length; i += 1) {
+    const row = rows[i]
+    try {
+      const date = toDateString(row.payment_date || row.date)
+      const amount = toNumber(row.amount)
+      if (amount <= 0) throw new Error("amount must be greater than 0")
+
+      const poId = resolvePoId(lookups, row)
+      if (!poId) throw new Error("po_number or po_id is required and must exist")
+
+      let voucherId: number | null = null
+      const createVoucher = toImportBoolean(row.create_voucher, true)
+
+      if (createVoucher) {
+        const isConfirmed = toImportBoolean(row.is_confirmed, true)
+        const voucher = await insertDebitCreditVoucher(
+          lookups,
+          row,
+          "Debit",
+          date,
+          amount,
+          isConfirmed
+        )
+        voucherId = voucher.voucherId
+      } else {
+        await insertVendorPayment(lookups, row, {
+          date,
+          amount,
+          poId,
+          paymentStatus: String(row.payment_status || "Completed"),
+        })
+        result.successRows += 1
+        continue
+      }
+
+      await insertVendorPayment(lookups, row, {
+        date,
+        amount,
+        voucherId,
+        poId,
+        paymentStatus: String(row.payment_status || "Completed"),
+      })
+
+      result.successRows += 1
+    } catch (error) {
+      result.failedRows += 1
+      result.errors.push({ row: i + 2, message: error instanceof Error ? error.message : "Unknown error" })
+    }
+  }
+
+  return result
+}
+
+/** AR subledger import: customer receipt + optional Credit voucher (matches Sales → Payments UI). */
+async function importCustomerReceipts(
+  rows: Row[],
+  lookups: SubledgerLookups
+): Promise<ImportResult> {
+  const result: ImportResult = { totalRows: rows.length, successRows: 0, failedRows: 0, errors: [] }
+
+  for (let i = 0; i < rows.length; i += 1) {
+    const row = rows[i]
+    try {
+      const date = toDateString(row.payment_date || row.date)
+      const amount = toNumber(row.amount)
+      if (amount <= 0) throw new Error("amount must be greater than 0")
+
+      const saleId = resolveSaleId(lookups, row)
+      if (!saleId) throw new Error("sale_no or sale_id is required and must exist")
+
+      let voucherId: number | null = null
+      const createVoucher = toImportBoolean(row.create_voucher, true)
+
+      if (createVoucher) {
+        const isConfirmed = toImportBoolean(row.is_confirmed, true)
+        const voucher = await insertDebitCreditVoucher(
+          lookups,
+          row,
+          "Credit",
+          date,
+          amount,
+          isConfirmed
+        )
+        voucherId = voucher.voucherId
+      } else {
+        await insertCustomerReceipt(lookups, row, { date, amount, saleId })
+        result.successRows += 1
+        continue
+      }
+
+      await insertCustomerReceipt(lookups, row, { date, amount, voucherId, saleId })
 
       result.successRows += 1
     } catch (error) {
@@ -470,38 +630,33 @@ async function importPurchaseOrders(rows: Row[], lookups: Awaited<ReturnType<typ
   for (let i = 0; i < rows.length; i += 1) {
     const row = rows[i]
     try {
-      const vendorId = resolveId(lookups.vendorsByName, row.vendor_name)
-      const projectId = resolveProjectId(lookups, row)
-      const expenseHeadId = resolveExpenseHeadId(lookups, row)
+      // Try to resolve IDs, but allow null if not found (lenient mode)
+      const vendorId = row.vendor_name ? resolveId(lookups.vendorsByName, row.vendor_name) : null
+      const projectId = row.project_name || row.project_id ? resolveProjectId(lookups, row) : null
+      const expenseHeadId = row.expense_head_name || row.expense_head_code || row.expense_head_id ? resolveExpenseHeadId(lookups, row) : null
 
-      if (!vendorId || !expenseHeadId) {
-        throw new Error("vendor_name/vendor_id and expense_head_name/expense_head_code must exist")
-      }
+      const qty = toNumber(row.qty, 0)
+      const rate = toNumber(row.rate, 0)
+      // Use total_amount exactly as provided — never compute qty × rate.
+      // A blank total_amount imports as 0 (fill it in the file if you want a value).
+      const totalAmount = toNumber(row.total_amount)
 
-      const qty = toNumber(row.qty)
-      const rate = toNumber(row.rate)
-      const amount = qty * rate
-
+      // Use the po_number from the file as-is when provided (keeps legacy series like PO20239).
+      // Only auto-generate (continuing PO2 sequence) when the cell is blank.
       let poNumber = String(row.po_number || "").trim()
       if (!poNumber) {
-        const year = new Date().getFullYear()
-        const lastPO = await sql`
-          SELECT po_number FROM purchase_orders
-          WHERE po_number LIKE ${`PO-${year}-%`}
-          ORDER BY created_at DESC LIMIT 1
-        `
-        const lastNum = lastPO.length > 0 ? parseInt(String(lastPO[0].po_number).split("-")[2], 10) : 0
-        poNumber = `PO-${year}-${String(lastNum + 1).padStart(4, "0")}`
+        poNumber = await getNextPoNumber()
       }
 
+      // Insert PO with all available data
       const orderRows = await sql`
         INSERT INTO purchase_orders (
           po_number, vendor_id, project_id, order_date, expected_delivery_date,
           subtotal, discount_percentage, discount_amount, tax_percentage, tax_amount, total_amount,
           payment_terms, delivery_terms, status, notes, is_active
         ) VALUES (
-          ${poNumber}, ${vendorId}, ${projectId}, ${toDateString(row.order_date)}, ${row.expected_delivery_date ? toDateString(row.expected_delivery_date) : null},
-          ${amount}, 0, 0, 0, 0, ${amount},
+          ${poNumber}, ${vendorId || null}, ${projectId || null}, ${row.order_date ? toDateString(row.order_date) : null}, ${row.expected_delivery_date ? toDateString(row.expected_delivery_date) : null},
+          ${totalAmount}, 0, 0, 0, 0, ${totalAmount},
           ${row.payment_terms || null}, ${row.delivery_terms || null}, ${row.status || 'Draft'}, ${row.notes || null}, true
         )
         RETURNING id
@@ -509,15 +664,18 @@ async function importPurchaseOrders(rows: Row[], lookups: Awaited<ReturnType<typ
 
       const poId = Number(orderRows[0].id)
 
-      await sql`
-        INSERT INTO purchase_order_items (
-          po_id, expense_head_id, description,
-          qty, unit_of_measurement, rate, amount, remaining_qty
-        ) VALUES (
-          ${poId}, ${expenseHeadId}, ${row.description || null},
-          ${qty}, ${row.unit_of_measurement || null}, ${rate}, ${amount}, ${qty}
-        )
-      `
+      // Insert item ONLY if we have expense_head_id
+      if (expenseHeadId) {
+        await sql`
+          INSERT INTO purchase_order_items (
+            po_id, expense_head_id, description,
+            qty, unit_of_measurement, rate, amount, remaining_qty
+          ) VALUES (
+            ${poId}, ${expenseHeadId}, ${row.description || null},
+            ${qty}, ${row.unit_of_measurement || null}, ${rate}, ${totalAmount}, ${qty}
+          )
+        `
+      }
 
       result.successRows += 1
     } catch (error) {
@@ -657,6 +815,12 @@ export async function POST(request: NextRequest) {
         break
       case "transactions":
         result = await importTransactions(rows, lookups)
+        break
+      case "vendor_payments":
+        result = await importVendorPayments(rows, lookups)
+        break
+      case "customer_receipts":
+        result = await importCustomerReceipts(rows, lookups)
         break
       case "sales":
         result = await importSales(rows, lookups)
